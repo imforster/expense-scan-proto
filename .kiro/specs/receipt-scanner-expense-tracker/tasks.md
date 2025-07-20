@@ -51,14 +51,14 @@
     - Write unit tests for extraction accuracy
     - _Requirements: 1.4, 1.5, 1.6_
 
-  - [-] 3.2 Build receipt review and editing UI
+  - [x] 3.2 Build receipt review and editing UI
     - Create form for displaying and editing extracted data
     - Implement field validation and error handling
     - Add highlighting for low-confidence fields
     - Build confirmation flow for saving receipt data
     - _Requirements: 1.5, 1.6, 1.7_
 
-  - [ ] 3.3 Implement receipt storage and retrieval
+  - [-] 3.3 Implement receipt storage and retrieval
     - Create repository for receipt data
     - Implement CRUD operations for receipts
     - Add image storage and linking to receipt data
