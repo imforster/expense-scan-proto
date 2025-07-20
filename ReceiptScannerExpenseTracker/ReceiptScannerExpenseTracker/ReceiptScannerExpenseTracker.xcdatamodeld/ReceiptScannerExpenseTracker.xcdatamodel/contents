@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21754" systemVersion="22F82" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="Category" representedClassName="Category" syncable="YES">
+        <attribute name="colorHex" attributeType="String" defaultValueString="AAAAAA"/>
+        <attribute name="icon" attributeType="String" defaultValueString="tag.fill"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isDefault" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="name" attributeType="String"/>
+        <relationship name="expenseItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ExpenseItem" inverseName="category" inverseEntity="ExpenseItem"/>
+        <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="category" inverseEntity="Expense"/>
+        <relationship name="parentCategory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Category" inverseName="subcategories" inverseEntity="Category"/>
+        <relationship name="subcategories" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Category" inverseName="parentCategory" inverseEntity="Category"/>
+    </entity>
+    <entity name="Expense" representedClassName="Expense" syncable="YES">
+        <attribute name="amount" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isRecurring" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="merchant" attributeType="String"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="paymentMethod" optional="YES" attributeType="String"/>
+        <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Category" inverseName="expenses" inverseEntity="Category"/>
+        <relationship name="items" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ExpenseItem" inverseName="expense" inverseEntity="ExpenseItem"/>
+        <relationship name="receipt" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Receipt" inverseName="expense" inverseEntity="Receipt"/>
+        <relationship name="tags" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Tag" inverseName="expenses" inverseEntity="Tag"/>
+    </entity>
+    <entity name="ExpenseItem" representedClassName="ExpenseItem" syncable="YES">
+        <attribute name="amount" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Category" inverseName="expenseItems" inverseEntity="Category"/>
+        <relationship name="expense" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Expense" inverseName="items" inverseEntity="Expense"/>
+        <relationship name="receiptItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ReceiptItem" inverseName="expenseItem" inverseEntity="ReceiptItem"/>
+    </entity>
+    <entity name="Receipt" representedClassName="Receipt" syncable="YES">
+        <attribute name="confidence" optional="YES" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="dateProcessed" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="imageURL" attributeType="URI"/>
+        <attribute name="merchantName" attributeType="String"/>
+        <attribute name="paymentMethod" optional="YES" attributeType="String"/>
+        <attribute name="processedImageURL" optional="YES" attributeType="URI"/>
+        <attribute name="rawTextContent" optional="YES" attributeType="String"/>
+        <attribute name="receiptNumber" optional="YES" attributeType="String"/>
+        <attribute name="taxAmount" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="totalAmount" attributeType="Decimal" defaultValueString="0.0"/>
+        <relationship name="expense" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Expense" inverseName="receipt" inverseEntity="Expense"/>
+        <relationship name="items" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ReceiptItem" inverseName="receipt" inverseEntity="ReceiptItem"/>
+    </entity>
+    <entity name="ReceiptItem" representedClassName="ReceiptItem" syncable="YES">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <attribute name="quantity" optional="YES" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="totalPrice" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="unitPrice" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <relationship name="expenseItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ExpenseItem" inverseName="receiptItem" inverseEntity="ExpenseItem"/>
+        <relationship name="receipt" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Receipt" inverseName="items" inverseEntity="Receipt"/>
+    </entity>
+    <entity name="Tag" representedClassName="Tag" syncable="YES">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="tags" inverseEntity="Expense"/>
+    </entity>
+</model>
