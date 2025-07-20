@@ -62,7 +62,20 @@ class CameraService: NSObject, ObservableObject {
             return
         }
         
+        // Don't setup if already configured
+        if !session.inputs.isEmpty && !session.outputs.isEmpty {
+            return
+        }
+        
         session.beginConfiguration()
+        
+        // Remove any existing inputs and outputs first
+        for input in session.inputs {
+            session.removeInput(input)
+        }
+        for output in session.outputs {
+            session.removeOutput(output)
+        }
         
         // Configure session preset for high quality photos
         if session.canSetSessionPreset(.photo) {
