@@ -43,7 +43,7 @@
     - Add confidence scoring for extracted fields
     - _Requirements: 1.4, 1.6_
 
-- [-] 3. Receipt Data Extraction and Management
+- [x] 3. Receipt Data Extraction and Management
   - [x] 3.1 Implement receipt data extraction algorithms
     - Create parsers for different receipt data points (date, vendor, amount)
     - Implement machine learning model for field classification
