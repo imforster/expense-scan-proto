@@ -172,15 +172,42 @@ struct CameraCaptureView: View {
             .stroke(Color.white.opacity(0.8), lineWidth: 2)
             .frame(width: 280, height: 350)
             .overlay(
-                VStack {
-                    Text("Position receipt within frame")
+                VStack(spacing: 8) {
+                    Text("Hold receipt vertically")
                         .font(.caption)
+                        .fontWeight(.medium)
                         .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(Color.black.opacity(0.7))
                         .cornerRadius(8)
                         .offset(y: -20)
+                    
+                    Spacer()
+                    
+                    // Visual orientation guide
+                    VStack(spacing: 4) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.6))
+                            .frame(width: 60, height: 8)
+                            .cornerRadius(2)
+                        
+                        Rectangle()
+                            .fill(Color.white.opacity(0.4))
+                            .frame(width: 80, height: 6)
+                            .cornerRadius(2)
+                        
+                        Rectangle()
+                            .fill(Color.white.opacity(0.4))
+                            .frame(width: 70, height: 6)
+                            .cornerRadius(2)
+                        
+                        Text("$XX.XX")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding(.top, 4)
+                    }
+                    .offset(y: 20)
                     
                     Spacer()
                 }

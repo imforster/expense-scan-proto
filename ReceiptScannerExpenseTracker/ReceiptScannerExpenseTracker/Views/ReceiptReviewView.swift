@@ -91,6 +91,8 @@ struct ReceiptReviewView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(maxHeight: 200)
+                .rotationEffect(.degrees(90))
+                .scaleEffect(x: -1, y: 1)
                 .cornerRadius(8)
                 .shadow(radius: 2)
         }
