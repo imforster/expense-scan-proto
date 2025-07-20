@@ -707,6 +707,76 @@ private extension OCRService {
     }
 }
 
+// MARK: - Receipt Merchant Patterns
+class ReceiptMerchantPatterns {
+    
+    private let knownMerchants = [
+        "walmart", "target", "starbucks", "mcdonald", "best buy",
+        "home depot", "costco", "amazon", "apple", "google",
+        "microsoft", "safeway", "kroger", "cvs", "walgreens"
+    ]
+    
+    private let businessSuffixes = [
+        "inc", "llc", "ltd", "corp", "co", "company", "corporation",
+        "incorporated", "limited", "store", "shop", "market", "restaurant"
+    ]
+    
+    func extractMerchantName(from line: String) -> String? {
+        let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Skip common receipt headers
+        let skipPatterns = [
+            "receipt", "invoice", "bill", "order", "transaction",
+            "customer copy", "merchant copy", "thank you", "welcome",
+            "store hours", "phone", "address", "visit us"
+        ]
+        
+        let lowercaseLine = trimmedLine.lowercased()
+        
+        // Check if line should be skipped
+        for pattern in skipPatterns {
+            if lowercaseLine.contains(pattern) {
+                return nil
+            }
+        }
+        
+        // Must have reasonable length
+        guard trimmedLine.count >= 3 && trimmedLine.count <= 100 else {
+            return nil
+        }
+        
+        // Must contain letters (not just numbers/symbols)
+        guard trimmedLine.rangeOfCharacter(from: .letters) != nil else {
+            return nil
+        }
+        
+        // Check for known merchants
+        for merchant in knownMerchants {
+            if lowercaseLine.contains(merchant) {
+                return trimmedLine
+            }
+        }
+        
+        // Check for business suffixes
+        for suffix in businessSuffixes {
+            if lowercaseLine.contains(suffix) {
+                return trimmedLine
+            }
+        }
+        
+        // If line looks like a business name (has mixed case, reasonable length)
+        let hasUppercase = trimmedLine.rangeOfCharacter(from: .uppercaseLetters) != nil
+        let hasLowercase = trimmedLine.rangeOfCharacter(from: .lowercaseLetters) != nil
+        let hasReasonableLength = trimmedLine.count >= 5 && trimmedLine.count <= 50
+        
+        if hasUppercase && hasLowercase && hasReasonableLength {
+            return trimmedLine
+        }
+        
+        return nil
+    }
+}
+
 // MARK: - Receipt Field Classifier
 class ReceiptFieldClassifier {
     
@@ -852,72 +922,5 @@ class ReceiptFieldClassifier {
         }
         
         return nil
-    }
-}
-
-// MARK: - Receipt Merchant Patterns
-class ReceiptMerchantPatterns {
-    
-    private let commonMerchants = [
-        "walmart", "target", "costco", "amazon", "starbucks", "mcdonald's",
-        "subway", "home depot", "lowes", "best buy", "cvs", "walgreens"
-    ]
-    
-    private let businessSuffixes = ["inc", "llc", "ltd", "corp", "co", "&", "and"]
-    
-    func extractMerchantName(from line: String) -> String? {
-        let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Skip empty or very short lines
-        guard cleanLine.count > 2 else { return nil }
-        
-        // Skip lines that are clearly not merchant names
-        let skipPatterns = [
-            "receipt", "invoice", "bill", "order", "transaction",
-            "customer copy", "merchant copy", "thank you", "welcome",
-            "store hours", "phone", "address"
-        ]
-        
-        let lowercaseLine = cleanLine.lowercased()
-        for pattern in skipPatterns {
-            if lowercaseLine.contains(pattern) {
-                return nil
-            }
-        }
-        
-        // Check if it's a known merchant
-        for merchant in commonMerchants {
-            if lowercaseLine.contains(merchant) {
-                return cleanLine
-            }
-        }
-        
-        // Check if it has business characteristics
-        if hasBusinessCharacteristics(cleanLine) {
-            return cleanLine
-        }
-        
-        return nil
-    }
-    
-    private func hasBusinessCharacteristics(_ line: String) -> Bool {
-        let lowercaseLine = line.lowercased()
-        
-        // Has business suffixes
-        for suffix in businessSuffixes {
-            if lowercaseLine.contains(suffix) {
-                return true
-            }
-        }
-        
-        // Has mixed case (typical of business names)
-        let hasUppercase = line.rangeOfCharacter(from: .uppercaseLetters) != nil
-        let hasLowercase = line.rangeOfCharacter(from: .lowercaseLetters) != nil
-        
-        // Not all numbers or punctuation
-        let hasLetters = line.rangeOfCharacter(from: .letters) != nil
-        let notAllNumbers = !line.allSatisfy({ $0.isNumber || $0.isPunctuation || $0.isWhitespace })
-        
-        return hasLetters && notAllNumbers && (hasUppercase || hasLowercase)
     }
 }
