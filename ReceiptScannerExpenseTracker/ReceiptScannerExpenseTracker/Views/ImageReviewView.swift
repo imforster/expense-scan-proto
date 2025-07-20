@@ -12,8 +12,14 @@ struct ImageReviewView: View {
     @State private var lastScaleValue: CGFloat = 1.0
     @State private var isProcessing = false
     @State private var showProcessingOptions = false
+    @State private var showReceiptReview = false
+    @State private var extractedReceiptData: ReceiptData?
+    @State private var processedImage: UIImage?
+    @State private var showError = false
+    @State private var errorMessage = ""
     
     @StateObject private var imageProcessingService = ImageProcessingService.shared
+    private let ocrService = OCRService()
     
     var body: some View {
         NavigationView {
@@ -118,16 +124,16 @@ struct ImageReviewView: View {
                             }
                             .accessibilityLabel("Retake photo")
                             
-                            // Process & Use button
+                            // Process & Extract button
                             Button(action: {
-                                processAndUseImage()
+                                processAndExtractReceipt()
                             }) {
                                 VStack(spacing: 8) {
-                                    Image(systemName: "wand.and.stars")
+                                    Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 24, weight: .medium))
                                         .foregroundColor(.black)
                                     
-                                    Text("Process & Use")
+                                    Text("Extract Data")
                                         .font(.caption)
                                         .fontWeight(.medium)
                                         .foregroundColor(.black)
@@ -137,7 +143,7 @@ struct ImageReviewView: View {
                                 .background(Color.white)
                                 .cornerRadius(12)
                             }
-                            .accessibilityLabel("Process and use this photo")
+                            .accessibilityLabel("Process and extract receipt data")
                             
                             // Use as-is button
                             Button(action: {
@@ -195,10 +201,56 @@ struct ImageReviewView: View {
                     .foregroundColor(.white)
                 }
             }
+            .sheet(isPresented: $showReceiptReview) {
+                if let receiptData = extractedReceiptData,
+                   let processedImage = processedImage {
+                    ReceiptReviewView(receiptData: receiptData, originalImage: processedImage) {
+                        // When receipt is saved, dismiss the entire flow
+                        onConfirm(processedImage)
+                        dismiss()
+                    }
+                }
+            }
+            .alert("Processing Error", isPresented: $showError) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
     
     // MARK: - Private Methods
+    
+    /// Processes the image and extracts receipt data using OCR
+    private func processAndExtractReceipt() {
+        isProcessing = true
+        
+        Task {
+            do {
+                // First, process the image for better OCR results
+                let processedImage = try await imageProcessingService.processReceiptImage(image)
+                
+                // Extract text using OCR
+                let extractedText = try await ocrService.extractTextFromImage(processedImage)
+                
+                // Parse the extracted text into structured receipt data
+                let receiptData = try await ocrService.parseReceiptData(extractedText)
+                
+                await MainActor.run {
+                    self.processedImage = processedImage
+                    self.extractedReceiptData = receiptData
+                    self.isProcessing = false
+                    self.showReceiptReview = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.isProcessing = false
+                    self.errorMessage = "Failed to extract receipt data: \(error.localizedDescription)"
+                    self.showError = true
+                }
+            }
+        }
+    }
     
     /// Processes the image and confirms it for use
     private func processAndUseImage() {
