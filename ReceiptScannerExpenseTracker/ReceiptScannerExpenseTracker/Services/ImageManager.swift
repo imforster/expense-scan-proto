@@ -6,6 +6,7 @@ class ImageManager {
     static let shared = ImageManager()
     
     private let receiptImageDirectory: URL
+    private let imageProcessingService = ImageProcessingService.shared
     
     private init() {
         // Setup receipt image storage directory
@@ -143,6 +144,58 @@ class ImageManager {
         } catch {
             print("Error deleting receipt image: \(error)")
             return false
+        }
+    }
+    
+    // MARK: - Image Processing Integration
+    
+    /// Processes and saves a receipt image with optimization
+    /// - Parameter image: The original receipt image
+    /// - Returns: A tuple containing the original image URL and processed image URL
+    @MainActor
+    func processAndSaveReceiptImage(_ image: UIImage) async throws -> (originalURL: URL, processedURL: URL?) {
+        // Save the original image first
+        guard let originalURL = saveReceiptImage(image) else {
+            throw ImageProcessingError.processingFailed("Failed to save original image")
+        }
+        
+        do {
+            // Process the image
+            let processedImage = try await imageProcessingService.processReceiptImage(image)
+            
+            // Save the processed image
+            let processedURL = saveProcessedReceiptImage(processedImage, originalImageURL: originalURL)
+            
+            return (originalURL: originalURL, processedURL: processedURL)
+        } catch {
+            // If processing fails, still return the original image URL
+            print("Image processing failed: \(error)")
+            return (originalURL: originalURL, processedURL: nil)
+        }
+    }
+    
+    /// Quickly processes and saves a receipt image for preview
+    /// - Parameter image: The original receipt image
+    /// - Returns: A tuple containing the original image URL and quickly processed image URL
+    @MainActor
+    func quickProcessAndSaveReceiptImage(_ image: UIImage) async throws -> (originalURL: URL, processedURL: URL?) {
+        // Save the original image first
+        guard let originalURL = saveReceiptImage(image) else {
+            throw ImageProcessingError.processingFailed("Failed to save original image")
+        }
+        
+        do {
+            // Quick process the image
+            let processedImage = try await imageProcessingService.quickProcessReceiptImage(image)
+            
+            // Save the processed image
+            let processedURL = saveProcessedReceiptImage(processedImage, originalImageURL: originalURL)
+            
+            return (originalURL: originalURL, processedURL: processedURL)
+        } catch {
+            // If processing fails, still return the original image URL
+            print("Quick image processing failed: \(error)")
+            return (originalURL: originalURL, processedURL: nil)
         }
     }
     
