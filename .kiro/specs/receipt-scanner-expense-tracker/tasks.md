@@ -22,7 +22,7 @@
     - _Requirements: 5.1, 5.3, 5.4_
 
 - [-] 2. Camera and Image Processing Implementation
-  - [x] 2.1 Implement camera access and image capture functionality
+  - [ ] 2.1 Implement camera access and image capture functionality
     - Create camera service with permission handling
     - Build camera preview UI with capture button
     - Implement image capture and temporary storage
