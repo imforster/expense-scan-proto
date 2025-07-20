@@ -90,7 +90,7 @@ struct ReceiptReviewView: View {
             Image(uiImage: viewModel.originalImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(maxHeight: 200)
+                .frame(maxWidth: .infinity, maxHeight: 300)
                 .rotationEffect(.degrees(90))
                 .scaleEffect(x: -1, y: 1)
                 .cornerRadius(8)
