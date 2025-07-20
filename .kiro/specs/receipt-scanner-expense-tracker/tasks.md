@@ -58,7 +58,7 @@
     - Build confirmation flow for saving receipt data
     - _Requirements: 1.5, 1.6, 1.7_
 
-  - [-] 3.3 Implement receipt storage and retrieval
+  - [x] 3.3 Implement receipt storage and retrieval
     - Create repository for receipt data
     - Implement CRUD operations for receipts
     - Add image storage and linking to receipt data
