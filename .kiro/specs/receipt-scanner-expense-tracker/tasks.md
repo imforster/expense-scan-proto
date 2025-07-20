@@ -21,15 +21,15 @@
     - Implement accessibility configurations
     - _Requirements: 5.1, 5.3, 5.4_
 
-- [-] 2. Camera and Image Processing Implementation
-  - [ ] 2.1 Implement camera access and image capture functionality
+- [ ] 2. Camera and Image Processing Implementation
+  - [x] 2.1 Implement camera access and image capture functionality
     - Create camera service with permission handling
     - Build camera preview UI with capture button
     - Implement image capture and temporary storage
     - Add image review and retake functionality
     - _Requirements: 1.1, 1.2, 1.3_
 
-  - [ ] 2.2 Implement image processing for receipt optimization
+  - [x] 2.2 Implement image processing for receipt optimization
     - Create image processing service
     - Implement image enhancement algorithms (contrast, perspective correction)
     - Add progress indicators during processing
