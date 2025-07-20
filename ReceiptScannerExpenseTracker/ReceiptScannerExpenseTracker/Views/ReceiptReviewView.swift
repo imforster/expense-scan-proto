@@ -5,8 +5,11 @@ struct ReceiptReviewView: View {
     @StateObject private var viewModel: ReceiptReviewViewModel
     @Environment(\.dismiss) private var dismiss
     
-    init(receiptData: ReceiptData, originalImage: UIImage) {
+    let onSaveComplete: (() -> Void)?
+    
+    init(receiptData: ReceiptData, originalImage: UIImage, onSaveComplete: (() -> Void)? = nil) {
         self._viewModel = StateObject(wrappedValue: ReceiptReviewViewModel(receiptData: receiptData, originalImage: originalImage))
+        self.onSaveComplete = onSaveComplete
     }
     
     var body: some View {
@@ -48,6 +51,8 @@ struct ReceiptReviewView: View {
             }
             .alert("Save Successful", isPresented: $viewModel.showSaveSuccess) {
                 Button("OK") {
+                    // Call the completion callback to dismiss the entire flow
+                    onSaveComplete?()
                     dismiss()
                 }
             } message: {
