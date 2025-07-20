@@ -87,14 +87,21 @@ struct ReceiptReviewView: View {
                 .font(.headline)
                 .foregroundColor(.primary)
             
-            Image(uiImage: viewModel.originalImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: 300)
-                .rotationEffect(.degrees(90))
-                .scaleEffect(x: -1, y: 1)
-                .cornerRadius(8)
-                .shadow(radius: 2)
+            ZStack {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 200, height: 300)
+                    .cornerRadius(8)
+                
+                Image(uiImage: viewModel.originalImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .rotationEffect(.degrees(90))
+                    .scaleEffect(x: -1, y: 1)
+                    .frame(maxWidth: 200, maxHeight: 300)
+            }
+            .cornerRadius(8)
+            .shadow(radius: 2)
         }
     }
     

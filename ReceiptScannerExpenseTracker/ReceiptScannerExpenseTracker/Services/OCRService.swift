@@ -98,7 +98,9 @@ class OCRService: OCRServiceProtocol {
                 }
                 
                 let recognizedStrings = observations.compactMap { observation in
-                    return try? observation.topCandidates(1).first?.string
+                    // Get top 3 candidates for better accuracy
+                    let candidates = try? observation.topCandidates(3)
+                    return candidates?.first?.string
                 }
                 
                 if recognizedStrings.isEmpty {
@@ -109,9 +111,12 @@ class OCRService: OCRServiceProtocol {
                 }
             }
             
-            // Configure the request for better accuracy
+            // Configure the request for maximum accuracy
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
+            request.minimumTextHeight = 0.01 // Detect smaller text
+            request.recognitionLanguages = ["en-US"] // Focus on English for better performance
+            request.automaticallyDetectsLanguage = false // Disable auto-detection for consistency
             
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             

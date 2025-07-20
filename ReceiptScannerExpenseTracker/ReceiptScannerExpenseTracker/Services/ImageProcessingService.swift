@@ -172,26 +172,26 @@ class ImageProcessingService: ObservableObject {
     /// - Parameter image: The input CIImage
     /// - Returns: Contrast-enhanced CIImage
     private func enhanceContrast(_ image: CIImage) -> CIImage {
-        // Auto-adjust exposure
+        // Auto-adjust exposure with more aggressive settings for receipts
         let exposureFilter = CIFilter.exposureAdjust()
         exposureFilter.inputImage = image
-        exposureFilter.ev = 0.3 // Slight exposure boost
+        exposureFilter.ev = 0.5 // Increased exposure boost for better text visibility
         
         guard let exposureAdjusted = exposureFilter.outputImage else { return image }
         
-        // Enhance contrast
+        // Enhance contrast more aggressively for receipt text
         let contrastFilter = CIFilter.colorControls()
         contrastFilter.inputImage = exposureAdjusted
-        contrastFilter.contrast = 1.2
-        contrastFilter.brightness = 0.1
-        contrastFilter.saturation = 0.8 // Reduce saturation for better OCR
+        contrastFilter.contrast = 1.4 // Increased contrast for sharper text
+        contrastFilter.brightness = 0.15 // Slightly more brightness
+        contrastFilter.saturation = 0.6 // Further reduce saturation for better OCR
         
         guard let contrastEnhanced = contrastFilter.outputImage else { return exposureAdjusted }
         
-        // Apply gamma correction
+        // Apply gamma correction optimized for text
         let gammaFilter = CIFilter.gammaAdjust()
         gammaFilter.inputImage = contrastEnhanced
-        gammaFilter.power = 0.9
+        gammaFilter.power = 0.8 // More aggressive gamma for text clarity
         
         return gammaFilter.outputImage ?? contrastEnhanced
     }
