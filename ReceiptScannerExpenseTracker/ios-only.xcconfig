@@ -1,0 +1,4 @@
+// iOS-only configuration
+SUPPORTED_PLATFORMS = iphoneos iphonesimulator
+TARGETED_DEVICE_FAMILY = 1,2
+SDKROOT = iphoneos
