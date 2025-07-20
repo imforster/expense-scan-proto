@@ -15,6 +15,7 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     @State private var selectedTab = 0
+    @State private var showingCameraView = false
     
     private let tabItems = [
         CustomTabBar.TabItem(
@@ -70,6 +71,21 @@ struct ContentView: View {
         }
         .background(AppTheme.backgroundColor)
         .animation(reduceMotion ? .none : .easeInOut, value: selectedTab)
+    }
+    
+    // MARK: - Actions
+    
+    private func handleCapturedImage(_ image: UIImage) {
+        // Save the captured image using ImageManager
+        if let imageURL = ImageManager.shared.saveReceiptImage(image) {
+            print("Receipt image saved at: \(imageURL)")
+            // TODO: Process the image with OCR and create expense entry
+            // This will be implemented in later tasks
+        } else {
+            print("Failed to save receipt image")
+        }
+        
+        showingCameraView = false
     }
     
     // Placeholder views for tabs
@@ -163,22 +179,31 @@ struct ContentView: View {
     }
     
     private var scanPlaceholderView: some View {
-        VStack {
-            CustomNavigationBar(title: "Scan Receipt")
-            
-            Spacer()
-            
-            EmptyStateView(
-                title: "Camera Access",
-                message: "This screen will allow you to scan receipts using your device's camera.",
-                systemImage: "camera.fill",
-                actionTitle: "Scan Receipt",
-                action: {}
-            )
-            
-            Spacer()
+        NavigationView {
+            VStack {
+                CustomNavigationBar(title: "Scan Receipt")
+                
+                Spacer()
+                
+                EmptyStateView(
+                    title: "Scan Receipt",
+                    message: "Capture your receipts to automatically extract expense information.",
+                    systemImage: "camera.fill",
+                    actionTitle: "Open Camera",
+                    action: {
+                        showingCameraView = true
+                    }
+                )
+                
+                Spacer()
+            }
+            .background(AppTheme.backgroundColor)
+            .fullScreenCover(isPresented: $showingCameraView) {
+                CameraCaptureView { capturedImage in
+                    handleCapturedImage(capturedImage)
+                }
+            }
         }
-        .background(AppTheme.backgroundColor)
     }
     
     private var expensesPlaceholderView: some View {
