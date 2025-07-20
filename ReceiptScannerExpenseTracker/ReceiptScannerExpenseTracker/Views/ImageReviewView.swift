@@ -204,7 +204,11 @@ struct ImageReviewView: View {
             .sheet(isPresented: $showReceiptReview) {
                 if let receiptData = extractedReceiptData,
                    let processedImage = processedImage {
-                    ReceiptReviewView(receiptData: receiptData, originalImage: processedImage)
+                    ReceiptReviewView(receiptData: receiptData, originalImage: processedImage) {
+                        // When receipt is saved, dismiss the entire flow
+                        onConfirm(processedImage)
+                        dismiss()
+                    }
                 }
             }
             .alert("Processing Error", isPresented: $showError) {

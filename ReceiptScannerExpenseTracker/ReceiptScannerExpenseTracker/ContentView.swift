@@ -64,10 +64,15 @@ struct ContentView: View {
                     .tag(4)
             }
             .edgesIgnoringSafeArea(.bottom)
+            .opacity(showingCameraView ? 0 : 1)
+            .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: showingCameraView)
             
-            CustomTabBar(selectedTab: $selectedTab, items: tabItems)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+            if !showingCameraView {
+                CustomTabBar(selectedTab: $selectedTab, items: tabItems)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .background(AppTheme.backgroundColor)
         .animation(reduceMotion ? .none : .easeInOut, value: selectedTab)
