@@ -11,6 +11,11 @@ class CoreDataManager: ObservableObject {
         return container.viewContext
     }
     
+    // Method for testing purposes
+    func setPersistentStoreDescriptions(_ descriptions: [NSPersistentStoreDescription]) {
+        container.persistentStoreDescriptions = descriptions
+    }
+    
     private init() {
         // Initialize Core Data container
         container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")

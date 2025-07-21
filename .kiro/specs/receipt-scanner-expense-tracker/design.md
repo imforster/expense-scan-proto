@@ -86,11 +86,13 @@ graph TD
 protocol ImageCaptureServiceProtocol {
     func captureImage() async throws -> UIImage
     func processReceiptImage(_ image: UIImage) async throws -> UIImage
+    func requestCameraPermission() async -> Bool
 }
 
 protocol OCRServiceProtocol {
     func extractTextFromImage(_ image: UIImage) async throws -> String
     func parseReceiptData(_ text: String) async throws -> ReceiptData
+    func getExtractionConfidence(for field: ReceiptField) -> Float
 }
 ```
 
@@ -103,6 +105,16 @@ protocol ExpenseServiceProtocol {
     func updateExpense(_ expense: Expense) async throws
     func deleteExpense(id: UUID) async throws
     func categorizeExpense(_ expense: Expense) async throws -> Category
+    func suggestCategoryForVendor(_ vendor: String) async -> Category?
+    func splitReceiptIntoExpenses(_ receipt: Receipt, splits: [ExpenseSplit]) async throws -> [Expense]
+    func detectRecurringExpense(_ expense: Expense) async -> Bool
+}
+
+protocol CategoryServiceProtocol {
+    func getDefaultCategories() -> [Category]
+    func createCustomCategory(_ category: Category) async throws
+    func suggestCategoryBasedOnVendor(_ vendor: String) async -> Category?
+    func suggestCategoryBasedOnItems(_ items: [String]) async -> Category?
 }
 ```
 
@@ -114,6 +126,25 @@ protocol AnalyticsServiceProtocol {
     func getSpendingByCategory(period: TimePeriod) async throws -> [CategorySpending]
     func getSpendingTrends(periods: [TimePeriod]) async throws -> SpendingTrends
     func exportReport(format: ReportFormat, filter: ExpenseFilter) async throws -> URL
+    func compareSpendingPeriods(_ current: TimePeriod, _ previous: TimePeriod) async throws -> SpendingComparison
+    func getSpendingByVendor(period: TimePeriod) async throws -> [VendorSpending]
+}
+
+protocol BudgetServiceProtocol {
+    func setBudgetLimit(_ limit: Decimal, for category: Category?, period: TimePeriod) async throws
+    func getBudgetStatus(for period: TimePeriod) async throws -> [BudgetStatus]
+    func checkBudgetAlerts() async throws -> [BudgetAlert]
+}
+```
+
+#### Offline Support Service
+
+```swift
+protocol OfflineServiceProtocol {
+    func queueReceiptForProcessing(_ receipt: Receipt) async
+    func syncPendingData() async throws
+    func isOfflineMode() -> Bool
+    func getPendingSyncCount() -> Int
 }
 ```
 
@@ -183,6 +214,114 @@ struct Category {
     let icon: String // SF Symbol name
     let isDefault: Bool
     let parentCategoryId: UUID?
+}
+```
+
+#### Supporting Models
+
+```swift
+struct ExpenseFilter {
+    let dateRange: DateInterval?
+    let categories: [Category]?
+    let amountRange: ClosedRange<Decimal>?
+    let vendors: [String]?
+    let tags: [String]?
+    let searchText: String?
+}
+
+struct ExpenseSplit {
+    let amount: Decimal
+    let category: Category
+    let description: String?
+}
+
+struct SpendingSummary {
+    let totalAmount: Decimal
+    let period: TimePeriod
+    let categoryBreakdown: [CategorySpending]
+    let transactionCount: Int
+    let averageTransaction: Decimal
+}
+
+struct CategorySpending {
+    let category: Category
+    let amount: Decimal
+    let percentage: Float
+    let transactionCount: Int
+}
+
+struct SpendingTrends {
+    let periods: [TimePeriod]
+    let amounts: [Decimal]
+    let growthRate: Float
+    let trend: TrendDirection
+}
+
+struct SpendingComparison {
+    let currentPeriod: SpendingSummary
+    let previousPeriod: SpendingSummary
+    let changeAmount: Decimal
+    let changePercentage: Float
+}
+
+struct VendorSpending {
+    let vendorName: String
+    let amount: Decimal
+    let transactionCount: Int
+    let lastTransaction: Date
+}
+
+struct BudgetStatus {
+    let category: Category?
+    let budgetLimit: Decimal
+    let currentSpending: Decimal
+    let remainingBudget: Decimal
+    let percentageUsed: Float
+    let period: TimePeriod
+}
+
+struct BudgetAlert {
+    let category: Category?
+    let alertType: BudgetAlertType
+    let message: String
+    let currentAmount: Decimal
+    let budgetLimit: Decimal
+}
+
+enum BudgetAlertType {
+    case approaching(threshold: Float) // e.g., 80% of budget
+    case exceeded
+    case nearEndOfPeriod
+}
+
+enum TrendDirection {
+    case increasing
+    case decreasing
+    case stable
+}
+
+enum TimePeriod {
+    case week
+    case month
+    case quarter
+    case year
+    case custom(DateInterval)
+}
+
+enum ReportFormat {
+    case pdf
+    case csv
+    case json
+}
+
+enum ReceiptField {
+    case merchantName
+    case date
+    case totalAmount
+    case taxAmount
+    case paymentMethod
+    case receiptNumber
+    case items
 }
 ```
 
