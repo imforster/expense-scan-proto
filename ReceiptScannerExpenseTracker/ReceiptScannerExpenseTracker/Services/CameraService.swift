@@ -62,7 +62,20 @@ class CameraService: NSObject, ObservableObject {
             return
         }
         
+        // Don't setup if already configured
+        if !session.inputs.isEmpty && !session.outputs.isEmpty {
+            return
+        }
+        
         session.beginConfiguration()
+        
+        // Remove any existing inputs and outputs first
+        for input in session.inputs {
+            session.removeInput(input)
+        }
+        for output in session.outputs {
+            session.removeOutput(output)
+        }
         
         // Configure session preset for high quality photos
         if session.canSetSessionPreset(.photo) {
@@ -248,6 +261,104 @@ class CameraService: NSObject, ObservableObject {
         return videoDeviceInput?.device.torchMode == .on
     }
     
+    // MARK: - Image Orientation Correction
+    
+    /// Corrects the orientation of captured images to ensure proper display
+    /// - Parameter image: The original captured image
+    /// - Returns: Image with corrected orientation
+    private func correctImageOrientation(_ image: UIImage) -> UIImage {
+        // For receipt scanning, images with .up orientation often appear upside down
+        // Apply 180-degree rotation to fix this common camera capture issue
+        if image.imageOrientation == .up {
+            return rotateImage180Degrees(image)
+        }
+        
+        // Calculate the proper size for the corrected image
+        var correctedSize = image.size
+        
+        // For orientations that require 90 or 270 degree rotation, swap width and height
+        switch image.imageOrientation {
+        case .left, .leftMirrored, .right, .rightMirrored:
+            correctedSize = CGSize(width: image.size.height, height: image.size.width)
+        default:
+            break
+        }
+        
+        // Create a graphics context with the corrected size
+        UIGraphicsBeginImageContextWithOptions(correctedSize, false, image.scale)
+        defer { UIGraphicsEndImageContext() }
+        
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return image
+        }
+        
+        // Apply the appropriate transformation based on the image orientation
+        switch image.imageOrientation {
+        case .down, .downMirrored:
+            context.translateBy(x: correctedSize.width, y: correctedSize.height)
+            context.rotate(by: .pi)
+        case .left, .leftMirrored:
+            context.translateBy(x: correctedSize.width, y: 0)
+            context.rotate(by: .pi / 2)
+        case .right, .rightMirrored:
+            context.translateBy(x: 0, y: correctedSize.height)
+            context.rotate(by: -.pi / 2)
+
+        default:
+            break
+        }
+        
+        // Handle mirrored orientations
+        switch image.imageOrientation {
+        case .upMirrored, .downMirrored:
+            context.translateBy(x: correctedSize.width, y: 0)
+            context.scaleBy(x: -1, y: 1)
+        case .leftMirrored, .rightMirrored:
+            context.translateBy(x: correctedSize.height, y: 0)
+            context.scaleBy(x: -1, y: 1)
+        default:
+            break
+        }
+        
+        // Draw the image in the corrected orientation
+        if let cgImage = image.cgImage {
+            context.draw(cgImage, in: CGRect(origin: .zero, size: image.size))
+        }
+        
+        guard let correctedImage = UIGraphicsGetImageFromCurrentImageContext() else {
+            // If correction fails, return the original image
+            return image
+        }
+        
+        return correctedImage
+    }
+    
+    /// Rotates an image 180 degrees for upside-down correction
+    /// - Parameter image: The image to rotate
+    /// - Returns: Image rotated 180 degrees
+    private func rotateImage180Degrees(_ image: UIImage) -> UIImage {
+        UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+        defer { UIGraphicsEndImageContext() }
+        
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return image
+        }
+        
+        // Move to center, rotate 180 degrees, then move back
+        context.translateBy(x: image.size.width / 2, y: image.size.height / 2)
+        context.rotate(by: .pi)
+        context.translateBy(x: -image.size.width / 2, y: -image.size.height / 2)
+        
+        // Draw the image
+        image.draw(in: CGRect(origin: .zero, size: image.size))
+        
+        guard let rotatedImage = UIGraphicsGetImageFromCurrentImageContext() else {
+            return image
+        }
+        
+        return rotatedImage
+    }
+    
     // MARK: - Cleanup
     
     deinit {
@@ -277,7 +388,7 @@ extension CameraService: @preconcurrency AVCapturePhotoCaptureDelegate {
                     return
                 }
                 
-                // Store the captured image
+                // Store the captured image as-is since users are guided to proper orientation
                 self.capturedImage = image
                 self.captureCompletion?(.success(image))
                 self.captureCompletion = nil
