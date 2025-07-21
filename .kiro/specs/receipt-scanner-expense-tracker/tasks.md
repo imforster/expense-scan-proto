@@ -21,7 +21,7 @@
     - Implement accessibility configurations
     - _Requirements: 5.1, 5.3, 5.4_
 
-- [ ] 2. Camera and Image Processing Implementation
+- [x] 2. Camera and Image Processing Implementation
   - [x] 2.1 Implement camera access and image capture functionality
     - Create camera service with permission handling
     - Build camera preview UI with capture button
@@ -66,7 +66,7 @@
     - _Requirements: 2.3, 4.1_
 
 - [ ] 4. Expense Management Features
-  - [ ] 4.1 Implement expense categorization system
+  - [x] 4.1 Implement expense categorization system
     - Create category management service
     - Build default categories and custom category support
     - Implement category suggestion algorithm
