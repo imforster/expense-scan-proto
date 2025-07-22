@@ -212,38 +212,7 @@ struct ContentView: View {
     }
     
     private var expensesPlaceholderView: some View {
-        VStack {
-            CustomNavigationBar(title: "Expenses") {
-                Button(action: {}) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 18))
-                        .foregroundColor(AppTheme.primaryColor)
-                        .padding(8)
-                        .background(Color.white)
-                        .cornerRadius(8)
-                        .shadow(color: Color.black.opacity(0.1), radius: 2)
-                }
-                .accessibilityLabel("Add expense")
-            }
-            
-            SearchBar(text: .constant(""), placeholder: "Search expenses")
-                .padding(.top)
-            
-            FilterBar(selectedFilter: .constant("All"), filters: ["All", "Food", "Transport", "Shopping", "Bills", "Entertainment"])
-            
-            Spacer()
-            
-            EmptyStateView(
-                title: "No Expenses Yet",
-                message: "Start by scanning a receipt or adding an expense manually.",
-                systemImage: "doc.text.magnifyingglass",
-                actionTitle: "Add Expense",
-                action: {}
-            )
-            
-            Spacer()
-        }
-        .background(AppTheme.backgroundColor)
+        ExpenseListView(context: viewContext)
     }
     
     private var reportsPlaceholderView: some View {

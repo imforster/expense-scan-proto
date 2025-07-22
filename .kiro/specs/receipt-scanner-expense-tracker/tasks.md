@@ -65,7 +65,7 @@
     - Write unit tests for storage operations
     - _Requirements: 2.3, 4.1_
 
-- [ ] 4. Expense Management Features
+- [x] 4. Expense Management Features
   - [x] 4.1 Implement expense categorization system
     - Create category management service
     - Build default categories and custom category support
@@ -73,7 +73,7 @@
     - Add unit tests for categorization logic
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 4.2 Build expense list and filtering UI
+  - [x] 4.2 Build expense list and filtering UI
     - Create expense list view with sorting options
     - Implement filtering by date, category, amount, and vendor
     - Add search functionality

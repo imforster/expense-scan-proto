@@ -2,6 +2,38 @@ import Foundation
 import CoreData
 import SwiftUI
 
+// MARK: - Category Service Error
+//enum CategoryServiceError: Error {
+//    case categoryAlreadyExists
+//    case categoryInUse
+//    case categoryHasSubcategories
+//    case cannotDeleteDefaultCategory
+//}
+
+// MARK: - Category Service Errors
+enum CategoryServiceError: LocalizedError {
+    case categoryAlreadyExists
+    case categoryInUse
+    case categoryHasSubcategories
+    case cannotDeleteDefaultCategory
+    case categoryNotFound
+    
+    var errorDescription: String? {
+        switch self {
+        case .categoryAlreadyExists:
+            return "A category with this name already exists"
+        case .categoryInUse:
+            return "Cannot delete category because it's being used by existing expenses"
+        case .categoryHasSubcategories:
+            return "Cannot delete category because it has subcategories"
+        case .cannotDeleteDefaultCategory:
+            return "Cannot delete default categories"
+        case .categoryNotFound:
+            return "Category not found"
+        }
+    }
+}
+
 // MARK: - Budget Rule Types
 enum BudgetRule: String, CaseIterable {
     case needs = "Needs"
@@ -748,30 +780,6 @@ class CategoryService: CategoryServiceProtocol {
                 print("Error fetching category by name: \(error)")
                 return nil
             }
-        }
-    }
-}
-
-// MARK: - Category Service Errors
-enum CategoryServiceError: LocalizedError {
-    case categoryAlreadyExists
-    case categoryInUse
-    case categoryHasSubcategories
-    case cannotDeleteDefaultCategory
-    case categoryNotFound
-    
-    var errorDescription: String? {
-        switch self {
-        case .categoryAlreadyExists:
-            return "A category with this name already exists"
-        case .categoryInUse:
-            return "Cannot delete category because it's being used by existing expenses"
-        case .categoryHasSubcategories:
-            return "Cannot delete category because it has subcategories"
-        case .cannotDeleteDefaultCategory:
-            return "Cannot delete default categories"
-        case .categoryNotFound:
-            return "Category not found"
         }
     }
 }
