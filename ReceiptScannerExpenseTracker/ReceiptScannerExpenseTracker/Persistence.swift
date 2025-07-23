@@ -1,10 +1,13 @@
 import CoreData
+import Combine
 
 // This file is kept for backward compatibility with the default SwiftUI template
 // The actual Core Data management is now handled by CoreDataManager.swift
 
-struct PersistenceController {
+class PersistenceController: ObservableObject {
     static let shared = PersistenceController()
+
+    @Published var isStoreLoaded = false
 
     // Preview helper for SwiftUI previews
     @MainActor
@@ -36,6 +39,7 @@ struct PersistenceController {
             let nsError = error as NSError
             fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
+        result.isStoreLoaded = true
         return result
     }()
 
@@ -49,6 +53,9 @@ struct PersistenceController {
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
                 fatalError("Unresolved error \(error), \(error.userInfo)")
+            }
+            DispatchQueue.main.async {
+                self.isStoreLoaded = true
             }
         })
         container.viewContext.automaticallyMergesChangesFromParent = true

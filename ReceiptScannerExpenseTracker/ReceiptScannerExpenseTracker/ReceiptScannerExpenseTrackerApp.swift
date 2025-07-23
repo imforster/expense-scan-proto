@@ -9,12 +9,19 @@ import SwiftUI
 
 @main
 struct ReceiptScannerExpenseTrackerApp: App {
-    let persistenceController = PersistenceController.shared
+    @StateObject private var persistenceController = PersistenceController.shared
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            if persistenceController.isStoreLoaded {
+                ContentView()
+                    .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            } else {
+                VStack {
+                    Text("Loading Store...")
+                    ProgressView()
+                }
+            }
         }
     }
 }

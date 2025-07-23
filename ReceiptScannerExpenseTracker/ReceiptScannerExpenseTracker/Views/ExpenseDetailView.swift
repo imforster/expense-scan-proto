@@ -2,9 +2,17 @@ import SwiftUI
 import CoreData
 
 struct ExpenseDetailView: View {
-    let expense: Expense
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
+    
+    // Use a FetchRequest to get the Expense object by its ID
+    @FetchRequest var expenseFetchRequest: FetchedResults<Expense>
+    
+    // Computed property to get the actual expense object
+    var expense: Expense? {
+        expenseFetchRequest.first
+    }
+    
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var isDeleting = false
@@ -16,87 +24,92 @@ struct ExpenseDetailView: View {
         return formatter
     }()
     
+    // Initialize the FetchRequest with the objectID
+    init(expenseID: NSManagedObjectID) {
+        print("ExpenseDetailView: Initializing with expenseID: \(expenseID)")
+        _expenseFetchRequest = FetchRequest(entity: Expense.entity(), sortDescriptors: [], predicate: NSPredicate(format: "SELF == %@", expenseID))
+    }
+    
     var body: some View {
-        NavigationView {
-            ScrollView {
+        if let expense = expense {
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
                     // Header Card
-                    headerCard
+                    self.headerCard(expense: expense)
                     
                     // Receipt Image (if available)
                     if let receipt = expense.receipt {
-                        receiptImageCard(receipt: receipt)
+                        self.receiptImageCard(receipt: receipt)
                     }
                     
                     // Expense Details
-                    detailsCard
+                    self.detailsCard(expense: expense)
                     
                     // Items (if available)
                     if !expense.safeExpenseItems.isEmpty {
-                        itemsCard(items: expense.safeExpenseItems)
+                        self.itemsCard(items: expense.safeExpenseItems)
                     }
                     
                     // Tags (if available)
                     if !expense.safeTags.isEmpty {
-                        tagsCard(tags: expense.safeTags)
+                        self.tagsCard(tags: expense.safeTags)
                     }
                     
                     // Notes (if available)
                     if !expense.safeNotes.isEmpty {
-                        notesCard(notes: expense.safeNotes)
+                        self.notesCard(notes: expense.safeNotes)
                     }
                     
                     // Action Buttons
-                    actionButtons
+                    self.actionButtons
                 }
                 .padding()
             }
             .background(AppTheme.backgroundColor)
             .navigationTitle("Expense Details")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button(action: { showingEditView = true }) {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .disabled(isDeleting)
-                        
-                        Button(role: .destructive, action: { showingDeleteAlert = true }) {
-                            Label("Delete", systemImage: "trash")
-                        }
-                        .disabled(isDeleting)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+            .navigationBarBackButtonHidden(true)
+            .navigationBarItems(
+                leading: Button("Close") {
+                    dismiss()
+                },
+                trailing: Menu {
+                    Button(action: { showingEditView = true }) {
+                        Label("Edit", systemImage: "pencil")
                     }
                     .disabled(isDeleting)
+                    
+                    Button(role: .destructive, action: { showingDeleteAlert = true }) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .disabled(isDeleting)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
+                .disabled(isDeleting)
+            )
+            .sheet(isPresented: $showingEditView) {
+                ExpenseEditView(expense: expense, context: viewContext)
+                    .onDisappear {
+                        // Refresh the view context to reflect any changes
+                        viewContext.refreshAllObjects()
+                    }
             }
-        }
-        .sheet(isPresented: $showingEditView) {
-            ExpenseEditView(expense: expense, context: viewContext)
-                .onDisappear {
-                    // Refresh the view context to reflect any changes
-                    viewContext.refreshAllObjects()
+            .alert("Delete Expense", isPresented: $showingDeleteAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deleteExpense()
                 }
-        }
-        .alert("Delete Expense", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                deleteExpense()
+            } message: {
+                Text("Are you sure you want to delete this expense? This action cannot be undone.")
             }
-        } message: {
-            Text("Are you sure you want to delete this expense? This action cannot be undone.")
+        } else {
+            Text("Expense not found.")
+                .navigationTitle("Error")
         }
     }
     
-    private var headerCard: some View {
+    private func headerCard(expense: Expense) -> some View {
         CardView {
             VStack(spacing: 16) {
                 // Amount
@@ -197,7 +210,7 @@ struct ExpenseDetailView: View {
         }
     }
     
-    private var detailsCard: some View {
+    private func detailsCard(expense: Expense) -> some View {
         CardView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
@@ -333,6 +346,12 @@ struct ExpenseDetailView: View {
     private func deleteExpense() {
         isDeleting = true
         
+        guard let expense = expense else {
+            print("Expense object is nil, cannot delete.")
+            isDeleting = false
+            return
+        }
+        
         viewContext.delete(expense)
         
         do {
@@ -374,7 +393,8 @@ struct ExpenseDetailView_Previews: PreviewProvider {
         let context = PersistenceController.preview.container.viewContext
         let expense = Expense.createSampleExpense(context: context)
         
-        return ExpenseDetailView(expense: expense)
+        // Pass the objectID to the ExpenseDetailView
+        return ExpenseDetailView(expenseID: expense.objectID)
     }
 }
 #endif
