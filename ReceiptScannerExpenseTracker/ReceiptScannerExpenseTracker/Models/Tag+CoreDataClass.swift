@@ -1,7 +1,7 @@
 import Foundation
 import CoreData
 
-@objc(Tag)
+@objc(ReceiptScannerExpenseTrackerTag)
 public class Tag: NSManagedObject {
     // Custom methods can be added here
 }

@@ -11,13 +11,7 @@ class CategorySuggestionTests: XCTestCase {
         try super.setUpWithError()
         
         // Create in-memory Core Data stack for testing
-        testCoreDataManager = CoreDataManager.shared
-        
-        // Configure for in-memory testing
-        let description = NSPersistentStoreDescription()
-        description.type = NSInMemoryStoreType
-        testCoreDataManager.setPersistentStoreDescriptions([description])
-        
+        testCoreDataManager = CoreDataManager.createForTesting()
         testContext = testCoreDataManager.viewContext
         categoryService = CategoryService(coreDataManager: testCoreDataManager)
         

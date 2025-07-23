@@ -2,7 +2,7 @@ import Foundation
 import CoreData
 import SwiftUI
 
-@objc(Category)
+@objc(ReceiptScannerExpenseTrackerCategory)
 public class Category: NSManagedObject {
     // Custom methods can be added here
 }
