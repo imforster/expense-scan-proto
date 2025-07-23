@@ -106,7 +106,9 @@ struct ExpenseListView: View {
         }
         .sheet(isPresented: $showingExpenseDetail) {
             if let expense = selectedExpense {
-                ExpenseDetailView(expense: expense)
+                NavigationView {
+                    ExpenseDetailView(expenseID: expense.objectID)
+                }
             }
         }
         .sheet(isPresented: $showingAddExpense) {
@@ -140,6 +142,8 @@ struct ExpenseListView: View {
                 ForEach(viewModel.filteredExpenses, id: \.id) { expense in
                     ExpenseRowView(expense: expense) {
                         selectedExpense = expense
+                        // Fire the fault to ensure all data is loaded
+                        let _ = selectedExpense?.merchant
                         showingExpenseDetail = true
                     }
                     .padding(.horizontal)

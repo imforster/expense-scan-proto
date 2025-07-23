@@ -23,6 +23,18 @@ extension Expense {
     var safePaymentMethod: String {
         return self.paymentMethod ?? "Unknown"
     }
+
+    /// Extracts the recurring pattern from the notes, if available
+    var recurringPattern: String? {
+        guard let notes = self.notes,
+              let patternRange = notes.range(of: "\\[Recurring: ([^\\]]+)\\]", options: .regularExpression) else {
+            return nil
+        }
+        
+        return String(notes[patternRange])
+            .replacingOccurrences(of: "[Recurring: ", with: "")
+            .replacingOccurrences(of: "]", with: "")
+    }
     
     // MARK: - Category Handling
     
