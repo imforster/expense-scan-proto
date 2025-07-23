@@ -1,7 +1,7 @@
 import Foundation
 import CoreData
 
-@objc(ExpenseItem)
+@objc(ReceiptScannerExpenseTrackerExpenseItem)
 public class ExpenseItem: NSManagedObject {
     // Custom methods can be added here
 }

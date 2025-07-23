@@ -80,11 +80,13 @@
     - Build expense detail view
     - _Requirements: 2.4, 2.5_
 
-  - [ ] 4.3 Implement expense editing and management
+  - [x] 4.3 Implement expense editing and management
     - Create expense editing form
     - Add support for notes and additional context
     - Implement receipt splitting functionality
     - Build recurring expense detection
+    - Add unit tests for expense list logic
+    - Add unit tests for expense editing and management
     - _Requirements: 2.5, 2.6, 2.7_
 
 - [ ] 5. Reporting and Analytics
@@ -124,21 +126,21 @@
     - Write unit tests for authentication flow
     - _Requirements: 4.2_
 
-  - [ ] 6.2 Set up data encryption
+  - [x] 6.2 Set up data encryption
     - Implement encryption for sensitive data
     - Create secure storage service
     - Add encryption key management
     - Write unit tests for encryption/decryption
     - _Requirements: 4.1_
 
-  - [ ] 6.3 Implement CloudKit integration
+  - [x] 6.3 Implement CloudKit integration
     - Set up CloudKit container and schema
     - Create sync service for data synchronization
     - Implement conflict resolution strategies
     - Add background sync functionality
     - _Requirements: 4.3, 4.4_
 
-  - [ ] 6.4 Add data management features
+  - [x] 6.4 Add data management features
     - Implement data backup functionality
     - Create data restoration flow
     - Build data deletion options
@@ -151,6 +153,7 @@
     - Build permission request flows
     - Add feature introduction tutorials
     - Implement onboarding skip/resume functionality
+    - Implement light and dark mode in settings
     - _Requirements: 5.1, 5.4_
 
   - [ ] 7.2 Add offline support
@@ -175,7 +178,7 @@
     - _Requirements: 5.3_
 
 - [ ] 8. Testing and Quality Assurance
-  - [ ] 8.1 Implement comprehensive unit tests
+  - [x] 8.1 Implement comprehensive unit tests
     - Write tests for view models
     - Create tests for service layer
     - Implement tests for repositories

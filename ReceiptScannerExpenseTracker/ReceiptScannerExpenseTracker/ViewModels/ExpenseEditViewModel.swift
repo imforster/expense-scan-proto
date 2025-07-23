@@ -14,8 +14,13 @@ class ExpenseEditViewModel: ObservableObject {
     @Published var isRecurring: Bool = false
     @Published var recurringPattern: RecurringPattern = .monthly
     @Published var nextExpectedDate: Date? = nil
+    @Published var shouldRemind: Bool = false
+    @Published var reminderDays: Int = 1
+    @Published var autoCreateNext: Bool = false
+    @Published var similarExpensesCount: Int = 0
     @Published var tags: [Tag] = []
     @Published var expenseItems: [ExpenseItemEdit] = []
+    @Published var expenseContexts: Set<ExpenseContext> = []
     
     // Receipt splitting
     @Published var isReceiptSplitMode: Bool = false
@@ -131,9 +136,37 @@ class ExpenseEditViewModel: ObservableObject {
                 notes = notes.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
             }
             
-            // Clean up any extra whitespace
-            notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Extract reminder settings
+            if let reminderRange = notes.range(of: "\\[Remind: (\\d+)\\]", options: .regularExpression) {
+                let reminderString = String(notes[reminderRange])
+                    .replacingOccurrences(of: "[Remind: ", with: "")
+                    .replacingOccurrences(of: "]", with: "")
+                
+                if let days = Int(reminderString) {
+                    shouldRemind = true
+                    reminderDays = days
+                }
+                
+                // Clean up notes by removing the reminder info
+                notes = notes.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
+            }
+            
+            // Extract auto-create setting
+            if notes.contains("[AutoCreate]") {
+                autoCreateNext = true
+                
+                // Clean up notes by removing the auto-create info
+                notes = notes.replacingOccurrences(of: "\\[AutoCreate\\]", with: "", options: .regularExpression)
+            }
         }
+        
+        // Extract expense contexts from notes
+        let (extractedContexts, cleanedNotes) = extractExpenseContexts(from: notes)
+        expenseContexts = extractedContexts
+        notes = cleanedNotes
+        
+        // Clean up any extra whitespace
+        notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Load tags
         if let expenseTags = expense.tags?.allObjects as? [Tag] {
@@ -285,6 +318,11 @@ class ExpenseEditViewModel: ObservableObject {
                             similarExpensesCount: similarExpenses.count
                         )
                         
+                        // Store the similar expenses count for UI display
+                        DispatchQueue.main.async {
+                            self.similarExpensesCount = similarExpenses.count
+                        }
+                        
                         continuation.resume(returning: analysis)
                     } else {
                         continuation.resume(returning: RecurringExpenseAnalysis(
@@ -336,6 +374,49 @@ class ExpenseEditViewModel: ObservableObject {
         // This could be used to show validation messages
     }
     
+    func selectAllSplits() {
+        for i in 0..<receiptSplits.count {
+            receiptSplits[i].isSelected = true
+        }
+    }
+    
+    func deselectAllSplits() {
+        for i in 0..<receiptSplits.count {
+            receiptSplits[i].isSelected = false
+        }
+    }
+    
+    func distributeAmountEvenly() {
+        let selectedSplits = receiptSplits.filter { $0.isSelected }
+        guard !selectedSplits.isEmpty else { return }
+        
+        let splitCount = selectedSplits.count
+        let amountPerSplit = originalReceiptAmount / Decimal(splitCount)
+        let formattedAmount = String(format: "%.2f", NSDecimalNumber(decimal: amountPerSplit).doubleValue)
+        
+        // Update amounts for selected splits
+        for i in 0..<receiptSplits.count {
+            if receiptSplits[i].isSelected {
+                receiptSplits[i].amount = formattedAmount
+            }
+        }
+    }
+    
+    func suggestCategoriesForSplits() {
+        Task {
+            for i in 0..<receiptSplits.count {
+                if receiptSplits[i].isSelected && receiptSplits[i].category == nil {
+                    // Try to suggest a category based on the item name
+                    if let suggestedCategory = try? await categoryService.suggestCategory(for: receiptSplits[i].name) {
+                        await MainActor.run {
+                            receiptSplits[i].category = suggestedCategory
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     func createExpensesFromSplits() async throws -> [Expense] {
         let selectedSplits = receiptSplits.filter { $0.isSelected }
         guard !selectedSplits.isEmpty else {
@@ -353,11 +434,82 @@ class ExpenseEditViewModel: ObservableObject {
                         newExpense.amount = NSDecimalNumber(string: split.amount)
                         newExpense.date = self.date
                         newExpense.merchant = self.merchant
-                        newExpense.category = split.category
-                        newExpense.notes = "Split from receipt: \(split.name)"
+                        
+                        // Fix for the context issue - fetch the category in the same context
+                        if let splitCategory = split.category {
+                            let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
+                            fetchRequest.predicate = NSPredicate(format: "id == %@", splitCategory.id as CVarArg)
+                            fetchRequest.fetchLimit = 1
+                            
+                            do {
+                                let categories = try self.context.fetch(fetchRequest)
+                                if let existingCategory = categories.first {
+                                    newExpense.category = existingCategory
+                                } else {
+                                    // If category doesn't exist in this context, create a new one with the same ID
+                                    let newCategory = Category(context: self.context)
+                                    newCategory.id = splitCategory.id
+                                    newCategory.name = splitCategory.name
+                                    newCategory.icon = splitCategory.icon
+                                    newCategory.colorHex = splitCategory.colorHex
+                                    newCategory.isDefault = splitCategory.isDefault
+                                    newExpense.category = newCategory
+                                }
+                            } catch {
+                                print("Error fetching category for split: \(error)")
+                            }
+                        }
+                        
+                        // Add more detailed notes for the split
+                        var splitNotes = "Split from receipt: \(split.name)"
+                        
+                        // Add original receipt info
+                        if let receipt = self.expense?.receipt {
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateStyle = .medium
+                            dateFormatter.timeStyle = .none
+                            
+                            splitNotes += "\n\nOriginal Receipt:"
+                            splitNotes += "\nDate: \(dateFormatter.string(from: receipt.date))"
+                            splitNotes += "\nMerchant: \(receipt.safeMerchantName)"
+                            splitNotes += "\nTotal: \(receipt.formattedTotalAmount())"
+                        }
+                        
+                        newExpense.notes = splitNotes
                         newExpense.paymentMethod = self.paymentMethod
                         newExpense.isRecurring = false
-                        newExpense.receipt = self.expense?.receipt
+                        
+                        // Fix for the context issue - fetch the receipt in the same context
+                        if let originalReceipt = self.expense?.receipt {
+                            let fetchRequest: NSFetchRequest<Receipt> = Receipt.fetchRequest()
+                            fetchRequest.predicate = NSPredicate(format: "id == %@", originalReceipt.id as CVarArg)
+                            fetchRequest.fetchLimit = 1
+                            
+                            do {
+                                let receipts = try self.context.fetch(fetchRequest)
+                                if let existingReceipt = receipts.first {
+                                    newExpense.receipt = existingReceipt
+                                } else {
+                                    // If receipt doesn't exist in this context, create a new one with the same ID
+                                    let newReceipt = Receipt(context: self.context)
+                                    newReceipt.id = originalReceipt.id
+                                    newReceipt.date = originalReceipt.date
+                                    newReceipt.merchantName = originalReceipt.merchantName
+                                    newReceipt.totalAmount = originalReceipt.totalAmount
+                                    newReceipt.imageURL = originalReceipt.imageURL
+                                    newReceipt.dateProcessed = originalReceipt.dateProcessed
+                                    newExpense.receipt = newReceipt
+                                }
+                            } catch {
+                                print("Error fetching receipt in expense context: \(error)")
+                            }
+                        }
+                        
+                        // Copy any expense contexts
+                        if !self.expenseContexts.isEmpty {
+                            let contextNames = self.expenseContexts.map { $0.rawValue }.joined(separator: ", ")
+                            newExpense.notes = (newExpense.notes ?? "") + "\n\n[Context: \(contextNames)]"
+                        }
                         
                         createdExpenses.append(newExpense)
                     }
@@ -485,19 +637,53 @@ class ExpenseEditViewModel: ObservableObject {
         }
     }
     
-    private func populateExpense(_ expense: Expense) {
+    // Made internal for testing purposes
+    func populateExpense(_ expense: Expense) {
         expense.amount = NSDecimalNumber(string: amount)
         expense.date = date
         expense.merchant = merchant
-        expense.category = selectedCategory
-        expense.notes = notes.isEmpty ? nil : notes
+        
+        // Fix for the context issue - fetch the category in the same context as the expense
+        if let selectedCategory = selectedCategory {
+            // Instead of directly assigning the category, fetch it in the expense's context
+            let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", selectedCategory.id as CVarArg)
+            fetchRequest.fetchLimit = 1
+            
+            do {
+                let categories = try context.fetch(fetchRequest)
+                if let existingCategory = categories.first {
+                    expense.category = existingCategory
+                } else {
+                    // If category doesn't exist in this context, create a new one with the same ID
+                    let newCategory = Category(context: context)
+                    newCategory.id = selectedCategory.id
+                    newCategory.name = selectedCategory.name
+                    newCategory.icon = selectedCategory.icon
+                    newCategory.colorHex = selectedCategory.colorHex
+                    newCategory.isDefault = selectedCategory.isDefault
+                    expense.category = newCategory
+                }
+            } catch {
+                print("Error fetching category in expense context: \(error)")
+                // If we can't fetch the category, don't set it
+                expense.category = nil
+            }
+        } else {
+            expense.category = nil
+        }
+        
         expense.paymentMethod = paymentMethod.isEmpty ? nil : paymentMethod
         expense.isRecurring = isRecurring
         
+        // Start with the user's notes
+        var notesText = notes
+        
+        // Add expense contexts to notes
+        notesText = addExpenseContextsToNotes(notesText)
+        
         // Store recurring pattern information in notes if recurring
         if isRecurring {
-            var notesText = notes
-            
             // Add recurring pattern info if not already present
             if !notesText.contains("[Recurring: ") {
                 let patternInfo = "[Recurring: \(recurringPattern.rawValue)]"
@@ -515,16 +701,43 @@ class ExpenseEditViewModel: ObservableObject {
                     notesText += " [Next: \(dateFormatter.string(from: nextDate))]"
                 }
                 
-                expense.notes = notesText
+                // Add reminder settings if enabled
+                if shouldRemind {
+                    notesText += " [Remind: \(reminderDays)]"
+                }
+                
+                // Add auto-create flag if enabled
+                if autoCreateNext {
+                    notesText += " [AutoCreate]"
+                }
             }
-        } else {
-            expense.notes = notes.isEmpty ? nil : notes
         }
+        
+        // Save the final notes
+        expense.notes = notesText.isEmpty ? nil : notesText
         
         // Update tags
         expense.removeFromTags(expense.tags ?? NSSet())
         for tag in tags {
-            expense.addToTags(tag)
+            // Fetch the tag in the expense's context
+            let fetchRequest: NSFetchRequest<Tag> = Tag.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", tag.id as CVarArg)
+            fetchRequest.fetchLimit = 1
+            
+            do {
+                let fetchedTags = try context.fetch(fetchRequest)
+                if let fetchedTag = fetchedTags.first {
+                    expense.addToTags(fetchedTag)
+                } else {
+                    // If tag doesn't exist in this context, create a new one with the same ID
+                    let newTag = Tag(context: context)
+                    newTag.id = tag.id
+                    newTag.name = tag.name
+                    expense.addToTags(newTag)
+                }
+            } catch {
+                print("Error fetching tag in expense context: \(error)")
+            }
         }
         
         // Update expense items
@@ -537,7 +750,32 @@ class ExpenseEditViewModel: ObservableObject {
             expenseItem.id = itemEdit.id
             expenseItem.name = itemEdit.name
             expenseItem.amount = NSDecimalNumber(string: itemEdit.amount)
-            expenseItem.category = itemEdit.category
+            
+            // If the item has a category, fetch it in the same context
+            if let itemCategory = itemEdit.category {
+                let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
+                fetchRequest.predicate = NSPredicate(format: "id == %@", itemCategory.id as CVarArg)
+                fetchRequest.fetchLimit = 1
+                
+                do {
+                    let categories = try context.fetch(fetchRequest)
+                    if let existingCategory = categories.first {
+                        expenseItem.category = existingCategory
+                    } else {
+                        // If category doesn't exist in this context, create a new one with the same ID
+                        let newCategory = Category(context: context)
+                        newCategory.id = itemCategory.id
+                        newCategory.name = itemCategory.name
+                        newCategory.icon = itemCategory.icon
+                        newCategory.colorHex = itemCategory.colorHex
+                        newCategory.isDefault = itemCategory.isDefault
+                        expenseItem.category = newCategory
+                    }
+                } catch {
+                    print("Error fetching category for expense item: \(error)")
+                }
+            }
+            
             expense.addToItems(expenseItem)
         }
     }
@@ -550,6 +788,71 @@ class ExpenseEditViewModel: ObservableObject {
         }
         
         return true
+    }
+    
+    // MARK: - Expense Context Methods
+    
+    func toggleExpenseContext(_ context: ExpenseContext) {
+        if expenseContexts.contains(context) {
+            expenseContexts.remove(context)
+        } else {
+            expenseContexts.insert(context)
+        }
+    }
+    
+    private func extractExpenseContexts(from notes: String) -> (Set<ExpenseContext>, String) {
+        var extractedContexts: Set<ExpenseContext> = []
+        var cleanedNotes = notes
+        
+        // Extract context tags from notes using regex
+        let contextPattern = "\\[Context: ([^\\]]+)\\]"
+        if let regex = try? NSRegularExpression(pattern: contextPattern) {
+            let nsString = notes as NSString
+            let matches = regex.matches(in: notes, range: NSRange(location: 0, length: nsString.length))
+            
+            for match in matches.reversed() {
+                let contextString = nsString.substring(with: match.range(at: 1))
+                let contexts = contextString.components(separatedBy: ", ")
+                
+                for contextName in contexts {
+                    if let context = ExpenseContext.allCases.first(where: { $0.rawValue == contextName }) {
+                        extractedContexts.insert(context)
+                    }
+                }
+                
+                // Remove the context tag from notes
+                cleanedNotes = cleanedNotes.replacingOccurrences(
+                    of: "\\[Context: \(contextString)\\]",
+                    with: "",
+                    options: .regularExpression
+                )
+            }
+        }
+        
+        // Clean up any extra whitespace
+        cleanedNotes = cleanedNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return (extractedContexts, cleanedNotes)
+    }
+    
+    private func addExpenseContextsToNotes(_ notes: String) -> String {
+        guard !expenseContexts.isEmpty else { return notes }
+        
+        var updatedNotes = notes
+        
+        // Add context tag if not already present
+        if !updatedNotes.contains("[Context:") {
+            let contextNames = expenseContexts.map { $0.rawValue }.joined(separator: ", ")
+            let contextTag = "[Context: \(contextNames)]"
+            
+            if updatedNotes.isEmpty {
+                updatedNotes = contextTag
+            } else {
+                updatedNotes += "\n\n" + contextTag
+            }
+        }
+        
+        return updatedNotes
     }
     
     // MARK: - Helper Methods
@@ -590,21 +893,7 @@ class ExpenseEditViewModel: ObservableObject {
 }
 
 // MARK: - Supporting Models
-
-struct ExpenseItemEdit: Identifiable {
-    let id: UUID
-    var name: String
-    var amount: String
-    var category: Category?
-}
-
-struct ReceiptSplit: Identifiable {
-    let id: UUID
-    var name: String
-    var amount: String
-    var category: Category?
-    var isSelected: Bool
-}
+// Now using external model definitions from Models/ExpenseItemEdit.swift and Models/ReceiptSplit.swift
 
 // MARK: - Recurring Expense Models
 

@@ -309,16 +309,118 @@ struct ExpenseEditView: View {
     
     private var additionalDetailsSection: some View {
         Section("Additional Details") {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Notes")
                     .font(.headline)
                 
                 TextEditor(text: $viewModel.notes)
-                    .frame(minHeight: 60)
+                    .frame(minHeight: 100)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                     )
+                
+                if !viewModel.notes.isEmpty {
+                    Text("\(viewModel.notes.count) characters")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Enhanced notes features
+                HStack {
+                    Button(action: {
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateStyle = .short
+                        viewModel.notes += viewModel.notes.isEmpty ? "" : "\n\n"
+                        viewModel.notes += "Date: \(dateFormatter.string(from: Date()))"
+                    }) {
+                        Label("Add Date", systemImage: "calendar")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button(action: {
+                        viewModel.notes += viewModel.notes.isEmpty ? "" : "\n\n"
+                        viewModel.notes += "Location: "
+                    }) {
+                        Label("Add Location", systemImage: "location")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.top, 4)
+                
+                // Context tags
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Context Tags")
+                        .font(.headline)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(ExpenseContext.allCases, id: \.self) { context in
+                                Button(action: {
+                                    viewModel.toggleExpenseContext(context)
+                                }) {
+                                    HStack {
+                                        Image(systemName: viewModel.expenseContexts.contains(context) ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(viewModel.expenseContexts.contains(context) ? context.color : .gray)
+                                        
+                                        Text(context.rawValue)
+                                            .font(.caption)
+                                        
+                                        Image(systemName: context.icon)
+                                            .font(.caption)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(context.color.opacity(0.1))
+                                    .foregroundColor(context.color)
+                                    .cornerRadius(12)
+                                }
+                            }
+                        }
+                    }
+                    
+                    Text("Add context to help with expense categorization and reporting")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 8)
+                
+                // Additional context section
+                if viewModel.expenseContexts.contains(.business) || viewModel.expenseContexts.contains(.reimbursable) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Additional Context")
+                            .font(.headline)
+                            .padding(.top, 8)
+                        
+                        if viewModel.expenseContexts.contains(.business) {
+                            // Business purpose field - commented out until implemented in ViewModel
+                            // TextField("Business purpose", text: $viewModel.businessPurpose)
+                            //     .textFieldStyle(RoundedBorderTextFieldStyle())
+                            //     .font(.subheadline)
+                            Text("Business Expense")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if viewModel.expenseContexts.contains(.reimbursable) {
+                            // Reimbursement status - commented out until implemented in ViewModel
+                            HStack {
+                                Text("Reimbursable Expense")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                // Picker("", selection: $viewModel.reimbursementStatus) {
+                                //     Text("Pending").tag(ReimbursementStatus.pending)
+                                //     Text("Submitted").tag(ReimbursementStatus.submitted)
+                                //     Text("Approved").tag(ReimbursementStatus.approved)
+                                //     Text("Received").tag(ReimbursementStatus.received)
+                                //     Text("Rejected").tag(ReimbursementStatus.rejected)
+                                // }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -343,9 +445,46 @@ struct ExpenseEditView: View {
                     }
                 }
                 
-                Text("This expense will be marked as recurring, which helps with budgeting and expense tracking.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Add date picker for next occurrence
+                if viewModel.nextExpectedDate == nil {
+                    DatePicker("Next Occurrence", selection: Binding(
+                        get: { viewModel.nextExpectedDate ?? Calendar.current.date(byAdding: .month, value: 1, to: Date())! },
+                        set: { viewModel.nextExpectedDate = $0 }
+                    ), displayedComponents: [.date])
+                }
+                
+                // Add reminder option
+                Toggle("Set Reminder", isOn: $viewModel.shouldRemind)
+                
+                if viewModel.shouldRemind {
+                    Picker("Remind Me", selection: $viewModel.reminderDays) {
+                        Text("Same day").tag(0)
+                        Text("1 day before").tag(1)
+                        Text("3 days before").tag(3)
+                        Text("1 week before").tag(7)
+                    }
+                }
+                
+                // Add auto-create option
+                Toggle("Auto-create Next Expense", isOn: $viewModel.autoCreateNext)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Recurring Expense Details")
+                        .font(.headline)
+                        .padding(.top, 4)
+                    
+                    Text("This expense will be marked as recurring, which helps with budgeting and expense tracking. You can set reminders for upcoming expenses and automatically create the next occurrence.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if viewModel.similarExpensesCount > 0 {
+                        Text("Based on your history, we found \(viewModel.similarExpensesCount) similar expenses from this merchant.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                }
+                .padding(.vertical, 4)
             }
         }
     }

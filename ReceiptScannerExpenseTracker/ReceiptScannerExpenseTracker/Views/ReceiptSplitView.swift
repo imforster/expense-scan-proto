@@ -110,35 +110,84 @@ struct ReceiptSplitView: View {
     
     private var splitItemsList: some View {
         List {
-            ForEach(Array(viewModel.receiptSplits.enumerated()), id: \.element.id) { index, split in
-                ReceiptSplitRow(
-                    split: split,
-                    index: index,
-                    availableCategories: viewModel.availableCategories,
-                    onToggleSelection: {
-                        viewModel.receiptSplits[index].isSelected.toggle()
-                    },
-                    onUpdateAmount: { newAmount in
-                        viewModel.receiptSplits[index].amount = newAmount
-                    },
-                    onUpdateCategory: { category in
-                        viewModel.receiptSplits[index].category = category
-                    },
-                    onDelete: {
-                        viewModel.removeReceiptSplit(at: index)
+            // Quick actions section
+            Section("Quick Actions") {
+                Button(action: {
+                    viewModel.selectAllSplits()
+                }) {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(AppTheme.primaryColor)
+                        Text("Select All Items")
                     }
-                )
+                }
+                
+                Button(action: {
+                    viewModel.deselectAllSplits()
+                }) {
+                    HStack {
+                        Image(systemName: "circle")
+                            .foregroundColor(.gray)
+                        Text("Deselect All Items")
+                    }
+                }
+                
+                Button(action: {
+                    viewModel.distributeAmountEvenly()
+                }) {
+                    HStack {
+                        Image(systemName: "equal.circle.fill")
+                            .foregroundColor(AppTheme.primaryColor)
+                        Text("Distribute Amount Evenly")
+                    }
+                }
+                
+                Button(action: {
+                    viewModel.suggestCategoriesForSplits()
+                }) {
+                    HStack {
+                        Image(systemName: "tag.circle.fill")
+                            .foregroundColor(AppTheme.primaryColor)
+                        Text("Auto-Categorize Items")
+                    }
+                }
             }
             
-            // Add new split button
-            Button(action: {
-                viewModel.addReceiptSplit()
-            }) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(AppTheme.primaryColor)
-                    Text("Add Custom Split")
-                        .foregroundColor(AppTheme.primaryColor)
+            // Split items section
+            Section("Receipt Items") {
+                ForEach(Array(viewModel.receiptSplits.enumerated()), id: \.element.id) { index, split in
+                    ReceiptSplitRow(
+                        split: split,
+                        index: index,
+                        availableCategories: viewModel.availableCategories,
+                        onToggleSelection: {
+                            viewModel.receiptSplits[index].isSelected.toggle()
+                        },
+                        onUpdateAmount: { newAmount in
+                            viewModel.receiptSplits[index].amount = newAmount
+                        },
+                        onUpdateCategory: { category in
+                            viewModel.receiptSplits[index].category = category
+                        },
+                        onUpdateName: { newName in
+                            viewModel.receiptSplits[index].name = newName
+                        },
+                        onDelete: {
+                            viewModel.removeReceiptSplit(at: index)
+                        }
+                    )
+                }
+                
+                // Add new split button
+                Button(action: {
+                    viewModel.addReceiptSplit()
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(AppTheme.primaryColor)
+                        Text("Add Custom Split")
+                            .foregroundColor(AppTheme.primaryColor)
+                    }
                 }
             }
         }
@@ -245,10 +294,12 @@ struct ReceiptSplitRow: View {
     let onToggleSelection: () -> Void
     let onUpdateAmount: (String) -> Void
     let onUpdateCategory: (Category?) -> Void
+    let onUpdateName: (String) -> Void
     let onDelete: () -> Void
     
     @State private var showingCategoryPicker = false
     @State private var editingAmount = false
+    @State private var editingName = false
     
     var body: some View {
         VStack(spacing: 12) {
@@ -262,9 +313,25 @@ struct ReceiptSplitRow: View {
                 
                 VStack(alignment: .leading, spacing: 4) {
                     // Item name
-                    Text(split.name.isEmpty ? "Custom Item" : split.name)
-                        .font(.body)
-                        .fontWeight(.medium)
+                    if editingName {
+                        TextField("Item name", text: Binding(
+                            get: { split.name },
+                            set: onUpdateName
+                        ))
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .onSubmit {
+                            editingName = false
+                        }
+                    } else {
+                        Button(action: {
+                            editingName = true
+                        }) {
+                            Text(split.name.isEmpty ? "Custom Item" : split.name)
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                        }
+                    }
                     
                     // Category
                     if let category = split.category {

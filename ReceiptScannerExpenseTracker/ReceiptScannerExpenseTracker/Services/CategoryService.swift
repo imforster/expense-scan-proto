@@ -103,7 +103,7 @@ struct BudgetRuleStats {
 // MARK: - Category Service Implementation
 class CategoryService: CategoryServiceProtocol {
     private let coreDataManager: CoreDataManager
-    private let context: NSManagedObjectContext
+    internal let context: NSManagedObjectContext
     
     // Merchant-to-category mapping for suggestions (aligned with 50-30-20 budget)
     private let merchantCategoryMappings: [String: String] = [

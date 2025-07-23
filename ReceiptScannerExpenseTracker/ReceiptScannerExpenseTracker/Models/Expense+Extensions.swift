@@ -132,3 +132,42 @@ extension NumberFormatter {
         return formatter
     }()
 }
+
+// MARK: - Expense Context Enum
+enum ExpenseContext: String, CaseIterable {
+    case business = "Business"
+    case personal = "Personal"
+    case reimbursable = "Reimbursable"
+    case tax = "Tax Deductible"
+    case subscription = "Subscription"
+    
+    var color: Color {
+        switch self {
+        case .business:
+            return .blue
+        case .personal:
+            return .green
+        case .reimbursable:
+            return .orange
+        case .tax:
+            return .purple
+        case .subscription:
+            return .red
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .business:
+            return "briefcase"
+        case .personal:
+            return "person"
+        case .reimbursable:
+            return "arrow.counterclockwise"
+        case .tax:
+            return "doc.text"
+        case .subscription:
+            return "repeat"
+        }
+    }
+}
