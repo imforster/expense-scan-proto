@@ -41,7 +41,11 @@ extension Receipt {
     func formattedDate() -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        return formatter.string(from: date)
+        if let safeDate = date as Date? {
+            return formatter.string(from: safeDate)
+        } else {
+            return formatter.string(from: Date())
+        }
     }
     
     func confidencePercentage() -> String {
