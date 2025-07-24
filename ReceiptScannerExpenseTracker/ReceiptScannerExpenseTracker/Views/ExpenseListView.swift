@@ -104,7 +104,10 @@ struct ExpenseListView: View {
         .sheet(isPresented: $showingSortOptions) {
             ExpenseSortView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingExpenseDetail) {
+        .sheet(isPresented: $showingExpenseDetail, onDismiss: {
+            // Clear the selected expense when the sheet is dismissed
+            selectedExpense = nil
+        }) {
             if let expense = selectedExpense {
                 NavigationView {
                     ExpenseDetailView(expenseID: expense.objectID)

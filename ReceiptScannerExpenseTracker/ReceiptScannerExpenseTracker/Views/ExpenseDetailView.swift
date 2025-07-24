@@ -10,7 +10,17 @@ struct ExpenseDetailView: View {
     
     // Computed property to get the actual expense object
     var expense: Expense? {
-        expenseFetchRequest.first
+        // Safely access the fetch request results
+        guard !expenseFetchRequest.isEmpty else { return nil }
+        
+        // Check if the object is still valid (not deleted)
+        let potentialExpense = expenseFetchRequest.first
+        guard let potentialExpense = potentialExpense,
+              !potentialExpense.isDeleted else {
+            return nil
+        }
+        
+        return potentialExpense
     }
     
     @State private var showingEditView = false
@@ -27,37 +37,42 @@ struct ExpenseDetailView: View {
     // Initialize the FetchRequest with the objectID
     init(expenseID: NSManagedObjectID) {
         print("ExpenseDetailView: Initializing with expenseID: \(expenseID)")
-        _expenseFetchRequest = FetchRequest(entity: Expense.entity(), sortDescriptors: [], predicate: NSPredicate(format: "SELF == %@", expenseID))
+        _expenseFetchRequest = FetchRequest(
+            entity: Expense.entity(),
+            sortDescriptors: [],
+            predicate: NSPredicate(format: "SELF == %@", expenseID),
+            animation: .default
+        )
     }
     
     var body: some View {
-        if let expense = expense {
+        if let view_expense = expense {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
                     // Header Card
-                    self.headerCard(expense: expense)
+                    self.headerCard(expense: view_expense)
                     
                     // Receipt Image (if available)
-                    if let receipt = expense.receipt {
+                    if let receipt = view_expense.receipt {
                         self.receiptImageCard(receipt: receipt)
                     }
                     
                     // Expense Details
-                    self.detailsCard(expense: expense)
+                    self.detailsCard(expense: view_expense)
                     
                     // Items (if available)
-                    if !expense.safeExpenseItems.isEmpty {
-                        self.itemsCard(items: expense.safeExpenseItems)
+                    if !view_expense.safeExpenseItems.isEmpty {
+                        self.itemsCard(items: view_expense.safeExpenseItems)
                     }
                     
                     // Tags (if available)
-                    if !expense.safeTags.isEmpty {
-                        self.tagsCard(tags: expense.safeTags)
+                    if !view_expense.safeTags.isEmpty {
+                        self.tagsCard(tags: view_expense.safeTags)
                     }
                     
                     // Notes (if available)
-                    if !expense.safeNotes.isEmpty {
-                        self.notesCard(notes: expense.safeNotes)
+                    if !view_expense.safeNotes.isEmpty {
+                        self.notesCard(notes: view_expense.safeNotes)
                     }
                     
                     // Action Buttons
@@ -88,12 +103,16 @@ struct ExpenseDetailView: View {
                 }
                 .disabled(isDeleting)
             )
-            .sheet(isPresented: $showingEditView) {
-                ExpenseEditView(expense: expense, context: viewContext)
-                    .onDisappear {
-                        // Refresh the view context to reflect any changes
-                        viewContext.refreshAllObjects()
-                    }
+            .sheet(isPresented: $showingEditView, onDismiss: {
+                // Simply dismiss the view after editing to avoid any CoreData issues
+                dismiss()
+                
+                // Post notification that expense was edited
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+                }
+            }) {
+                ExpenseEditView(expense: view_expense, context: viewContext)
             }
             .alert("Delete Expense", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) { }
@@ -104,7 +123,7 @@ struct ExpenseDetailView: View {
                 Text("Are you sure you want to delete this expense? This action cannot be undone.")
             }
         } else {
-            Text("Expense not found.")
+            Text("Expense not found or has been deleted.")
                 .navigationTitle("Error")
         }
     }
@@ -346,20 +365,30 @@ struct ExpenseDetailView: View {
     private func deleteExpense() {
         isDeleting = true
         
-        guard let expense = expense else {
-            print("Expense object is nil, cannot delete.")
+        // Capture the expense ID before deletion
+        guard let expense = expense, !expense.isDeleted else {
+            print("Expense object is nil or already deleted, cannot delete.")
             isDeleting = false
+            dismiss()
             return
         }
         
-        viewContext.delete(expense)
+        // First dismiss the view to avoid any issues with the view trying to access deleted objects
+        dismiss()
         
-        do {
-            try viewContext.save()
-            dismiss()
-        } catch {
-            print("Failed to delete expense: \(error)")
-            isDeleting = false
+        // Then delete the expense after a short delay to ensure the view is fully dismissed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Delete the expense
+            viewContext.delete(expense)
+            
+            do {
+                try viewContext.save()
+                
+                // Post notification that expense was deleted
+                NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+            } catch {
+                print("Failed to delete expense: \(error)")
+            }
         }
     }
 }
