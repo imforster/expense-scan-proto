@@ -28,6 +28,14 @@ class ExpenseListViewModel: ObservableObject {
 
     init(context: NSManagedObjectContext) {
         self.context = context
+        
+        // Set up notification observer for expense data changes
+        NotificationCenter.default.publisher(for: .expenseDataChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.loadExpenses()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Data Loading
@@ -58,6 +66,12 @@ class ExpenseListViewModel: ObservableObject {
 
     // MARK: - Core Filtering and Sorting Logic
     private func updateFilteredExpenses() {
+        // Guard against empty source expenses
+        guard !sourceExpenses.isEmpty else {
+            self.filteredExpenses = []
+            return
+        }
+        
         var filtered = sourceExpenses
 
         // Apply search filter
@@ -94,13 +108,28 @@ class ExpenseListViewModel: ObservableObject {
     }
     
     private func sortExpenses(_ expenses: [Expense], by sortOption: SortOption) -> [Expense] {
-        switch sortOption {
-        case .dateAscending: return expenses.sorted { $0.date < $1.date }
-        case .dateDescending: return expenses.sorted { $0.date > $1.date }
-        case .amountAscending: return expenses.sorted { $0.amount.decimalValue < $1.amount.decimalValue }
-        case .amountDescending: return expenses.sorted { $0.amount.decimalValue > $1.amount.decimalValue }
-        case .merchantAscending: return expenses.sorted { $0.safeMerchant.localizedCaseInsensitiveCompare($1.safeMerchant) == .orderedAscending }
-        case .merchantDescending: return expenses.sorted { $0.safeMerchant.localizedCaseInsensitiveCompare($1.safeMerchant) == .orderedDescending }
+        // Guard against empty expenses
+        guard !expenses.isEmpty else { return [] }
+        
+        // Use try-catch to handle any potential errors during sorting
+        do {
+            switch sortOption {
+            case .dateAscending: 
+                return expenses.sorted { $0.date < $1.date }
+            case .dateDescending: 
+                return expenses.sorted { $0.date > $1.date }
+            case .amountAscending: 
+                return expenses.sorted { $0.amount.decimalValue < $1.amount.decimalValue }
+            case .amountDescending: 
+                return expenses.sorted { $0.amount.decimalValue > $1.amount.decimalValue }
+            case .merchantAscending: 
+                return expenses.sorted { $0.safeMerchant.localizedCaseInsensitiveCompare($1.safeMerchant) == .orderedAscending }
+            case .merchantDescending: 
+                return expenses.sorted { $0.safeMerchant.localizedCaseInsensitiveCompare($1.safeMerchant) == .orderedDescending }
+            }
+        } catch {
+            print("Error sorting expenses: \(error)")
+            return expenses // Return unsorted expenses if sorting fails
         }
     }
 
@@ -127,6 +156,8 @@ class ExpenseListViewModel: ObservableObject {
 
     // MARK: - Helpers
     func getUniqueVendors() -> [String] {
+        // Return empty array if there are no expenses
+        guard !sourceExpenses.isEmpty else { return [] }
         return Array(Set(sourceExpenses.map { $0.safeMerchant })).sorted()
     }
     
