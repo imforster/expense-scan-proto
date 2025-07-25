@@ -278,7 +278,7 @@ class ExpenseEditViewModelTests: XCTestCase {
     func testDeleteExpenseFromListViewModel() {
         // Given
         let expense = createTestExpense()
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // Verify expense exists
         let fetchRequest: NSFetchRequest<Expense> = Expense.fetchRequest()
@@ -309,7 +309,7 @@ class ExpenseEditViewModelTests: XCTestCase {
         
         try! context.save()
         
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // When
         listViewModel.deleteExpense(expense)
@@ -343,7 +343,7 @@ class ExpenseEditViewModelTests: XCTestCase {
         }
         try! context.save()
         
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // When - Measure delete performance
         measure {
@@ -375,7 +375,7 @@ class ExpenseEditViewModelTests: XCTestCase {
         }
         
         let newContext = newContainer.viewContext
-        let listViewModel = ExpenseListViewModel(context: newContext)
+        let listViewModel = ExpenseListViewModel()
         
         // When - Try to delete expense from different context
         listViewModel.deleteExpense(expense)
@@ -397,7 +397,7 @@ class ExpenseEditViewModelTests: XCTestCase {
         }
         try! context.save()
         
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         let expectation = XCTestExpectation(description: "Delete operations complete")
         expectation.expectedFulfillmentCount = expenses.count
         
@@ -420,7 +420,7 @@ class ExpenseEditViewModelTests: XCTestCase {
     func testDeleteExpenseUIResponsiveness() {
         // Given
         let expense = createTestExpense()
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // When - Measure delete operation time
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -439,7 +439,7 @@ class ExpenseEditViewModelTests: XCTestCase {
     func testDeleteExpenseMainThreadExecution() {
         // Given
         let expense = createTestExpense()
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         var executedOnMainThread = false
         

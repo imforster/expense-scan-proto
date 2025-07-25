@@ -20,9 +20,10 @@ struct ExpenseDetailView: View {
     }()
     
     // Initialize with the expenseID and create the ViewModel
-    init(expenseID: NSManagedObjectID) {
-        // Create the data service and view model
-        let dataService = ExpenseDataService()
+    init(expenseID: NSManagedObjectID, context: NSManagedObjectContext? = nil) {
+        // Use the provided context or fall back to the shared context
+        let managedContext = context ?? CoreDataManager.shared.viewContext
+        let dataService = ExpenseDataService(context: managedContext)
         _viewModel = StateObject(wrappedValue: ExpenseDetailViewModel(dataService: dataService, expenseID: expenseID))
     }
     
@@ -74,6 +75,10 @@ struct ExpenseDetailView: View {
             }
         } message: {
             Text("Are you sure you want to delete this expense? This action cannot be undone.")
+        }
+        .task {
+            // Ensure data loads when view appears
+            await viewModel.loadExpense()
         }
     }
     
@@ -505,8 +510,8 @@ struct ExpenseDetailView_Previews: PreviewProvider {
         let context = PersistenceController.preview.container.viewContext
         let expense = Expense.createSampleExpense(context: context)
         
-        // Pass the objectID to the ExpenseDetailView
-        return ExpenseDetailView(expenseID: expense.objectID)
+        // Pass the objectID and context to the ExpenseDetailView
+        return ExpenseDetailView(expenseID: expense.objectID, context: context)
     }
 }
 #endif

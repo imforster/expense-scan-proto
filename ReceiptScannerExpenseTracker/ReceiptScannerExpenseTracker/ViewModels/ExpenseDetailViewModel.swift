@@ -58,7 +58,7 @@ class ExpenseDetailViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Initial load
+        // Initial load - but also ensure it's called from the view
         Task {
             await loadExpense()
         }
@@ -68,6 +68,12 @@ class ExpenseDetailViewModel: ObservableObject {
     
     /// Loads the expense with proper error handling
     func loadExpense() async {
+        // Don't reload if already loaded with the same expense
+        if case .loaded(let expense) = viewState, expense.objectID == expenseID {
+            logger.info("Expense already loaded, skipping reload")
+            return
+        }
+        
         logger.info("Loading expense with ID: \(self.expenseID)")
         viewState = .loading
         

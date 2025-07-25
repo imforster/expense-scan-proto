@@ -117,7 +117,7 @@ struct ExpenseListView: View {
         }) {
             if let expense = selectedExpense {
                 NavigationView {
-                    ExpenseDetailView(expenseID: expense.objectID)
+                    ExpenseDetailView(expenseID: expense.objectID, context: viewContext)
                 }
             }
         }
@@ -155,9 +155,9 @@ struct ExpenseListView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.displayedExpenses, id: \.id) { expense in
                     ExpenseRowView(expense: expense) {
+                        // Ensure the expense is properly loaded in the current context
+                        viewContext.refresh(expense, mergeChanges: false)
                         selectedExpense = expense
-                        // Fire the fault to ensure all data is loaded
-                        let _ = selectedExpense?.merchant
                         showingExpenseDetail = true
                     }
                     .padding(.horizontal)

@@ -242,27 +242,19 @@ class ExpenseSortService {
             return expense1.amount.decimalValue > expense2.amount.decimalValue
             
         case .merchantAscending:
-            return expense1.merchant.localizedCaseInsensitiveCompare(expense2.merchant) == .orderedAscending
+            return expense1.safeMerchant.localizedCaseInsensitiveCompare(expense2.safeMerchant) == .orderedAscending
         case .merchantDescending:
-            return expense1.merchant.localizedCaseInsensitiveCompare(expense2.merchant) == .orderedDescending
+            return expense1.safeMerchant.localizedCaseInsensitiveCompare(expense2.safeMerchant) == .orderedDescending
             
         case .categoryAscending:
-            let category1 = expense1.category?.name ?? ""
-            let category2 = expense2.category?.name ?? ""
-            return category1.localizedCaseInsensitiveCompare(category2) == .orderedAscending
+            return expense1.safeCategoryName.localizedCaseInsensitiveCompare(expense2.safeCategoryName) == .orderedAscending
         case .categoryDescending:
-            let category1 = expense1.category?.name ?? ""
-            let category2 = expense2.category?.name ?? ""
-            return category1.localizedCaseInsensitiveCompare(category2) == .orderedDescending
+            return expense1.safeCategoryName.localizedCaseInsensitiveCompare(expense2.safeCategoryName) == .orderedDescending
             
         case .paymentMethodAscending:
-            let payment1 = expense1.paymentMethod ?? ""
-            let payment2 = expense2.paymentMethod ?? ""
-            return payment1.localizedCaseInsensitiveCompare(payment2) == .orderedAscending
+            return expense1.safePaymentMethod.localizedCaseInsensitiveCompare(expense2.safePaymentMethod) == .orderedAscending
         case .paymentMethodDescending:
-            let payment1 = expense1.paymentMethod ?? ""
-            let payment2 = expense2.paymentMethod ?? ""
-            return payment1.localizedCaseInsensitiveCompare(payment2) == .orderedDescending
+            return expense1.safePaymentMethod.localizedCaseInsensitiveCompare(expense2.safePaymentMethod) == .orderedDescending
             
         case .recurringFirst:
             if expense1.isRecurring != expense2.isRecurring {
@@ -290,17 +282,13 @@ class ExpenseSortService {
             return expense1.amount.decimalValue == expense2.amount.decimalValue
             
         case .merchantAscending, .merchantDescending:
-            return expense1.merchant.localizedCaseInsensitiveCompare(expense2.merchant) == .orderedSame
+            return expense1.safeMerchant.localizedCaseInsensitiveCompare(expense2.safeMerchant) == .orderedSame
             
         case .categoryAscending, .categoryDescending:
-            let category1 = expense1.category?.name ?? ""
-            let category2 = expense2.category?.name ?? ""
-            return category1.localizedCaseInsensitiveCompare(category2) == .orderedSame
+            return expense1.safeCategoryName.localizedCaseInsensitiveCompare(expense2.safeCategoryName) == .orderedSame
             
         case .paymentMethodAscending, .paymentMethodDescending:
-            let payment1 = expense1.paymentMethod ?? ""
-            let payment2 = expense2.paymentMethod ?? ""
-            return payment1.localizedCaseInsensitiveCompare(payment2) == .orderedSame
+            return expense1.safePaymentMethod.localizedCaseInsensitiveCompare(expense2.safePaymentMethod) == .orderedSame
             
         case .recurringFirst, .nonRecurringFirst:
             return expense1.isRecurring == expense2.isRecurring

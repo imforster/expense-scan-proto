@@ -41,7 +41,7 @@ class ExpenseDeleteTests: XCTestCase {
         XCTAssertEqual(initialCount, 1)
         
         // When
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         listViewModel.deleteExpense(expense)
         
         // Then
@@ -53,7 +53,7 @@ class ExpenseDeleteTests: XCTestCase {
     func testDeleteExpenseDoesNotHang() {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // When - Measure execution time to ensure it doesn't hang
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -72,7 +72,7 @@ class ExpenseDeleteTests: XCTestCase {
         }
         XCTAssertEqual(getExpenseCount(), 5)
         
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // When - Delete expenses one by one
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -123,7 +123,7 @@ class ExpenseDeleteTests: XCTestCase {
         XCTAssertEqual(getReceiptCount(), 1)
         
         // When
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         listViewModel.deleteExpense(expense)
         
         // Then - Cascade deletes should work
@@ -149,7 +149,7 @@ class ExpenseDeleteTests: XCTestCase {
         XCTAssertEqual(getTagCount(), 1)
         
         // When
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         listViewModel.deleteExpense(expense)
         
         // Then - Nullify relationships should preserve related objects
@@ -184,7 +184,7 @@ class ExpenseDeleteTests: XCTestCase {
         XCTAssertEqual(getExpenseCount(), 100)
         XCTAssertEqual(getExpenseItemCount(), 100)
         
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // When - Delete first 10 expenses and measure performance
         measure {
@@ -205,7 +205,7 @@ class ExpenseDeleteTests: XCTestCase {
         }
         try! context.save()
         
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         let expectation = XCTestExpectation(description: "All deletes complete")
         expectation.expectedFulfillmentCount = expenses.count
         
@@ -232,7 +232,7 @@ class ExpenseDeleteTests: XCTestCase {
     func testDeleteWithInvalidExpense() {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         // Delete the expense directly from context (simulating it being deleted elsewhere)
         context.delete(expense)
@@ -257,7 +257,7 @@ class ExpenseDeleteTests: XCTestCase {
         // Move expense to mock context
         let expenseInMockContext = mockContext.object(with: expense.objectID) as! Expense
         
-        let listViewModel = ExpenseListViewModel(context: mockContext)
+        let listViewModel = ExpenseListViewModel()
         
         // When
         listViewModel.deleteExpense(expenseInMockContext)
@@ -272,7 +272,7 @@ class ExpenseDeleteTests: XCTestCase {
     func testDeleteOnMainThread() {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
-        let listViewModel = ExpenseListViewModel(context: context)
+        let listViewModel = ExpenseListViewModel()
         
         var isMainThread = false
         

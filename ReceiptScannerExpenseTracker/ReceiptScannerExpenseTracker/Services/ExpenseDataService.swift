@@ -288,9 +288,21 @@ class ExpenseDataService: NSObject, ObservableObject {
         return await withCheckedContinuation { continuation in
             context.perform {
                 do {
-                    let expense = try self.context.existingObject(with: id) as? Expense
+                    // Check if the object exists and is valid
+                    guard let expense = try self.context.existingObject(with: id) as? Expense else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
+                    // Ensure the expense is not deleted and is accessible
+                    if expense.isDeleted || expense.isFault {
+                        // Try to refresh the object
+                        self.context.refresh(expense, mergeChanges: false)
+                    }
+                    
                     continuation.resume(returning: expense)
                 } catch {
+                    self.logger.error("Failed to get expense with ID \(id): \(error.localizedDescription)")
                     continuation.resume(returning: nil)
                 }
             }
