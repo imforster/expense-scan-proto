@@ -124,7 +124,7 @@ struct ExpenseListView: View {
             }
         }
         .sheet(isPresented: $showingAddExpense) {
-            ExpenseEditView(context: viewContext)
+            ExpenseEditView(context: CoreDataManager.shared.viewContext)
                 .onDisappear {
                     Task {
                         await viewModel.loadExpenses()

@@ -643,31 +643,38 @@ class ExpenseEditViewModel: ObservableObject {
         expense.date = date
         expense.merchant = merchant
         
-        // Fix for the context issue - fetch the category in the same context as the expense
+        // Handle category assignment with proper context safety
         if let selectedCategory = selectedCategory {
-            // Instead of directly assigning the category, fetch it in the expense's context
-            let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "id == %@", selectedCategory.id as CVarArg)
-            fetchRequest.fetchLimit = 1
-            
-            do {
-                let categories = try context.fetch(fetchRequest)
-                if let existingCategory = categories.first {
-                    expense.category = existingCategory
-                } else {
-                    // If category doesn't exist in this context, create a new one with the same ID
-                    let newCategory = Category(context: context)
-                    newCategory.id = selectedCategory.id
-                    newCategory.name = selectedCategory.name
-                    newCategory.icon = selectedCategory.icon
-                    newCategory.colorHex = selectedCategory.colorHex
-                    newCategory.isDefault = selectedCategory.isDefault
-                    expense.category = newCategory
+            // Check if the selected category is already in the same context as the expense
+            if selectedCategory.managedObjectContext == expense.managedObjectContext {
+                // Same context, safe to assign directly
+                expense.category = selectedCategory
+            } else {
+                // Different contexts, need to fetch the category in the expense's context
+                let expenseContext = expense.managedObjectContext!
+                let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
+                fetchRequest.predicate = NSPredicate(format: "id == %@", selectedCategory.id as CVarArg)
+                fetchRequest.fetchLimit = 1
+                
+                do {
+                    let categories = try expenseContext.fetch(fetchRequest)
+                    if let existingCategory = categories.first {
+                        expense.category = existingCategory
+                    } else {
+                        // If category doesn't exist in this context, create a new one with the same ID
+                        let newCategory = Category(context: expenseContext)
+                        newCategory.id = selectedCategory.id
+                        newCategory.name = selectedCategory.name
+                        newCategory.icon = selectedCategory.icon
+                        newCategory.colorHex = selectedCategory.colorHex
+                        newCategory.isDefault = selectedCategory.isDefault
+                        expense.category = newCategory
+                    }
+                } catch {
+                    print("Error fetching category in expense context: \(error)")
+                    // If we can't fetch the category, don't set it
+                    expense.category = nil
                 }
-            } catch {
-                print("Error fetching category in expense context: \(error)")
-                // If we can't fetch the category, don't set it
-                expense.category = nil
             }
         } else {
             expense.category = nil
