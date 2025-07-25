@@ -1,6 +1,9 @@
 import SwiftUI
 import CoreData
 
+// Ensure we're using the SearchBar from CustomNavigation.swift
+typealias SearchBarView = SearchBar
+
 struct ExpenseListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: ExpenseListViewModel
@@ -58,7 +61,7 @@ struct ExpenseListView: View {
             }
             
             // Search Bar
-            SearchBar(text: $viewModel.searchText, placeholder: "Search expenses, merchants, or notes")
+            SearchBarView(text: $viewModel.searchText, placeholder: "Search expenses, merchants, or notes")
                 .padding(.top, 8)
             
             // Active Filters Summary

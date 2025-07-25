@@ -5,23 +5,8 @@ struct ExpenseDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     
-    // Use a FetchRequest to get the Expense object by its ID
-    @FetchRequest var expenseFetchRequest: FetchedResults<Expense>
-    
-    // Computed property to get the actual expense object
-    var expense: Expense? {
-        // Safely access the fetch request results
-        guard !expenseFetchRequest.isEmpty else { return nil }
-        
-        // Check if the object is still valid (not deleted)
-        let potentialExpense = expenseFetchRequest.first
-        guard let potentialExpense = potentialExpense,
-              !potentialExpense.isDeleted else {
-            return nil
-        }
-        
-        return potentialExpense
-    }
+    // Use the new ViewModel with state machine
+    @StateObject private var viewModel: ExpenseDetailViewModel
     
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
@@ -34,61 +19,155 @@ struct ExpenseDetailView: View {
         return formatter
     }()
     
-    // Initialize the FetchRequest with the objectID
+    // Initialize with the expenseID and create the ViewModel
     init(expenseID: NSManagedObjectID) {
-        print("ExpenseDetailView: Initializing with expenseID: \(expenseID)")
-        _expenseFetchRequest = FetchRequest(
-            entity: Expense.entity(),
-            sortDescriptors: [],
-            predicate: NSPredicate(format: "SELF == %@", expenseID),
-            animation: .default
-        )
+        // Create the data service and view model
+        let dataService = ExpenseDataService()
+        _viewModel = StateObject(wrappedValue: ExpenseDetailViewModel(dataService: dataService, expenseID: expenseID))
     }
     
     var body: some View {
-        if let view_expense = expense {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Header Card
-                    self.headerCard(expense: view_expense)
-                    
-                    // Receipt Image (if available)
-                    if let receipt = view_expense.receipt {
-                        self.receiptImageCard(receipt: receipt)
-                    }
-                    
-                    // Expense Details
-                    self.detailsCard(expense: view_expense)
-                    
-                    // Items (if available)
-                    if !view_expense.safeExpenseItems.isEmpty {
-                        self.itemsCard(items: view_expense.safeExpenseItems)
-                    }
-                    
-                    // Tags (if available)
-                    if !view_expense.safeTags.isEmpty {
-                        self.tagsCard(tags: view_expense.safeTags)
-                    }
-                    
-                    // Notes (if available)
-                    if !view_expense.safeNotes.isEmpty {
-                        self.notesCard(notes: view_expense.safeNotes)
-                    }
-                    
-                    // Action Buttons
-                    self.actionButtons
+        ZStack {
+            // Background
+            AppTheme.backgroundColor.ignoresSafeArea()
+            
+            // Content based on view state
+            Group {
+                switch viewModel.viewState {
+                case .loading:
+                    loadingView
+                case .loaded(let expense):
+                    expenseDetailContent(expense: expense)
+                case .error(let error):
+                    errorView(error: error)
+                case .deleted:
+                    deletedView
                 }
-                .padding()
             }
-            .background(AppTheme.backgroundColor)
-            .navigationTitle("Expense Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .navigationBarItems(
-                leading: Button("Close") {
-                    dismiss()
-                },
-                trailing: Menu {
+        }
+        .navigationTitle("Expense Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(
+            leading: Button("Close") {
+                dismiss()
+            },
+            trailing: navigationBarTrailingItems
+        )
+        .sheet(isPresented: $showingEditView, onDismiss: {
+            // Simply dismiss the view after editing to avoid any CoreData issues
+            dismiss()
+            
+            // Post notification that expense was edited
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+            }
+        }) {
+            if let expense = viewModel.expense {
+                ExpenseEditView(expense: expense, context: viewContext)
+            }
+        }
+        .alert("Delete Expense", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteExpense()
+            }
+        } message: {
+            Text("Are you sure you want to delete this expense? This action cannot be undone.")
+        }
+    }
+    
+    // MARK: - View Components
+    
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.5)
+            
+            Text("Loading expense details...")
+                .font(.headline)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private func errorView(error: ExpenseError) -> some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 50))
+                .foregroundColor(.orange)
+            
+            Text(viewModel.userFriendlyErrorMessage())
+                .font(.headline)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            Text(viewModel.recoverySuggestion())
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            if viewModel.isErrorRecoverable() {
+                Button(action: {
+                    Task {
+                        await viewModel.recoverFromError()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Try Again")
+                    }
+                    .padding()
+                    .background(AppTheme.primaryColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(viewModel.recoveryInProgress)
+                .opacity(viewModel.recoveryInProgress ? 0.6 : 1.0)
+                .overlay(
+                    Group {
+                        if viewModel.recoveryInProgress {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .padding(.leading, -25)
+                        }
+                    }
+                )
+            }
+        }
+        .padding()
+    }
+    
+    private var deletedView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "trash.fill")
+                .font(.system(size: 50))
+                .foregroundColor(.red)
+            
+            Text("This expense has been deleted")
+                .font(.headline)
+            
+            Text("You can return to the expense list")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Button(action: {
+                dismiss()
+            }) {
+                Text("Return to Expense List")
+                    .padding()
+                    .background(AppTheme.primaryColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+        }
+        .padding()
+    }
+    
+    private var navigationBarTrailingItems: some View {
+        Group {
+            if case .loaded = viewModel.viewState {
+                Menu {
                     Button(action: { showingEditView = true }) {
                         Label("Edit", systemImage: "pencil")
                     }
@@ -102,29 +181,49 @@ struct ExpenseDetailView: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .disabled(isDeleting)
-            )
-            .sheet(isPresented: $showingEditView, onDismiss: {
-                // Simply dismiss the view after editing to avoid any CoreData issues
-                dismiss()
+            } else {
+                // Empty view when not in loaded state
+                EmptyView()
+            }
+        }
+    }
+    
+    private func expenseDetailContent(expense: Expense) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 24) {
+                // Header Card
+                self.headerCard(expense: expense)
                 
-                // Post notification that expense was edited
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+                // Receipt Image (if available)
+                if let receipt = expense.receipt {
+                    self.receiptImageCard(receipt: receipt)
                 }
-            }) {
-                ExpenseEditView(expense: view_expense, context: viewContext)
-            }
-            .alert("Delete Expense", isPresented: $showingDeleteAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    deleteExpense()
+                
+                // Expense Details
+                self.detailsCard(expense: expense)
+                
+                // Items (if available)
+                if !expense.safeExpenseItems.isEmpty {
+                    self.itemsCard(items: expense.safeExpenseItems)
                 }
-            } message: {
-                Text("Are you sure you want to delete this expense? This action cannot be undone.")
+                
+                // Tags (if available)
+                if !expense.safeTags.isEmpty {
+                    self.tagsCard(tags: expense.safeTags)
+                }
+                
+                // Notes (if available)
+                if !expense.safeNotes.isEmpty {
+                    self.notesCard(notes: expense.safeNotes)
+                }
+                
+                // Action Buttons
+                self.actionButtons
             }
-        } else {
-            Text("Expense not found or has been deleted.")
-                .navigationTitle("Error")
+            .padding()
+        }
+        .refreshable {
+            await viewModel.refreshExpense()
         }
     }
     
@@ -365,29 +464,13 @@ struct ExpenseDetailView: View {
     private func deleteExpense() {
         isDeleting = true
         
-        // Capture the expense ID before deletion
-        guard let expense = expense, !expense.isDeleted else {
-            print("Expense object is nil or already deleted, cannot delete.")
-            isDeleting = false
-            dismiss()
-            return
-        }
-        
-        // First dismiss the view to avoid any issues with the view trying to access deleted objects
-        dismiss()
-        
-        // Then delete the expense after a short delay to ensure the view is fully dismissed
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            // Delete the expense
-            viewContext.delete(expense)
+        // Use the ViewModel to delete the expense
+        Task {
+            await viewModel.deleteExpense()
             
-            do {
-                try viewContext.save()
-                
-                // Post notification that expense was deleted
-                NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
-            } catch {
-                print("Failed to delete expense: \(error)")
+            // Dismiss the view after deletion
+            DispatchQueue.main.async {
+                dismiss()
             }
         }
     }
