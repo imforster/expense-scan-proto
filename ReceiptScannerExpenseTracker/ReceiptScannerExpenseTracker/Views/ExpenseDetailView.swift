@@ -64,7 +64,8 @@ struct ExpenseDetailView: View {
             }
         }) {
             if let expense = viewModel.expense {
-                ExpenseEditView(expense: expense, context: viewContext)
+                // Use the expense's own context to avoid context mismatch
+                ExpenseEditView(expense: expense, context: expense.managedObjectContext!)
             }
         }
         .alert("Delete Expense", isPresented: $showingDeleteAlert) {
