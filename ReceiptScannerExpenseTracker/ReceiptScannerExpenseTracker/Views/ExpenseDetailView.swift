@@ -20,10 +20,9 @@ struct ExpenseDetailView: View {
     }()
     
     // Initialize with the expenseID and create the ViewModel
-    init(expenseID: NSManagedObjectID, context: NSManagedObjectContext? = nil) {
-        // Use the provided context or fall back to the shared context
-        let managedContext = context ?? CoreDataManager.shared.viewContext
-        let dataService = ExpenseDataService(context: managedContext)
+    init(expenseID: NSManagedObjectID) {
+        // Use the shared context for consistency
+        let dataService = ExpenseDataService(context: CoreDataManager.shared.viewContext)
         _viewModel = StateObject(wrappedValue: ExpenseDetailViewModel(dataService: dataService, expenseID: expenseID))
     }
     
@@ -510,8 +509,8 @@ struct ExpenseDetailView_Previews: PreviewProvider {
         let context = PersistenceController.preview.container.viewContext
         let expense = Expense.createSampleExpense(context: context)
         
-        // Pass the objectID and context to the ExpenseDetailView
-        return ExpenseDetailView(expenseID: expense.objectID, context: context)
+        // Pass the objectID to the ExpenseDetailView
+        return ExpenseDetailView(expenseID: expense.objectID)
     }
 }
 #endif
