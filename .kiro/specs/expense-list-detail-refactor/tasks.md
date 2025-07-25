@@ -2,42 +2,46 @@
 
 ## Phase 1: Foundation Services (Week 1-2)
 
-- [ ] 1. Create ExpenseDataService foundation
+- [x] 1. Create ExpenseDataService foundation
   - Create ExpenseDataService class with NSFetchedResultsController
   - Implement basic CRUD operations with proper error handling
   - Add background context support for heavy operations
   - Create comprehensive error types and handling
+  - Add unit tests to test the foundation changes
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.4_
 
-- [ ] 1.1 Implement ExpenseDataService core functionality
+- [x] 1.1 Implement ExpenseDataService core functionality
   - Set up NSFetchedResultsController with proper delegate methods
   - Implement loadExpenses() with background processing
   - Add createExpense(), updateExpense(), deleteExpense() methods
   - Implement getExpense(by id:) for safe object retrieval
+  - Implment unit tests for ExpenseDataService core functionality
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 1.2 Add comprehensive error handling to ExpenseDataService
+- [x] 1.2 Add comprehensive error handling to ExpenseDataService
   - Create ExpenseError enum with user-friendly messages
   - Implement error recovery mechanisms
   - Add logging for debugging and monitoring
   - Create fallback mechanisms for failed operations
+  - Implment unit tests for error handling in ExpenseDataService
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 1.3 Create ExpenseFilterService
+- [x] 1.3 Create ExpenseFilterService
   - Implement FilterCriteria struct with all filter options
   - Create filter() method with optimized algorithms
   - Add debounceFilter() method using Combine publishers
   - Implement memory-efficient filtering for large datasets
+  - Implment unit tests for ExpenseFilterService
   - _Requirements: 3.1, 3.3, 7.2, 7.3_
 
-- [ ] 1.4 Create ExpenseSortService
+- [x] 1.4 Create ExpenseSortService
   - Implement SortOption enum with all sorting options
   - Create sort() method with custom comparators
   - Add sortAsync() method for large datasets
   - Implement error handling for invalid data during sorting
   - _Requirements: 3.2, 7.2, 7.3_
 
-- [ ] 1.5 Create unit tests for all services
+- [x] 1.5 Create unit tests for all services
   - Write comprehensive tests for ExpenseDataService
   - Test all error scenarios and recovery mechanisms
   - Create tests for ExpenseFilterService with various criteria
@@ -46,35 +50,35 @@
 
 ## Phase 2: ExpenseDetailView Migration (Week 3)
 
-- [ ] 2. Create ExpenseDetailViewModel with state machine
+- [x] 2. Create ExpenseDetailViewModel with state machine
   - Implement ViewState enum with loading, loaded, error, deleted states
   - Create safe expense loading with proper error handling
   - Add refresh and delete functionality
   - Implement proper cleanup and memory management
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 2.1 Implement ExpenseDetailViewModel core functionality
+- [x] 2.1 Implement ExpenseDetailViewModel core functionality
   - Create ViewState state machine with proper transitions
   - Implement loadExpense() with safe object retrieval
   - Add refreshExpense() method for data updates
   - Implement deleteExpense() with proper cleanup
   - _Requirements: 2.1, 2.4, 2.5_
 
-- [ ] 2.2 Add error handling and recovery to ExpenseDetailViewModel
+- [x] 2.2 Add error handling and recovery to ExpenseDetailViewModel
   - Implement error state handling with user-friendly messages
   - Add retry mechanisms for failed operations
   - Create fallback UI states for error conditions
   - Implement proper error logging and reporting
   - _Requirements: 2.6, 4.1, 4.2, 4.5_
 
-- [ ] 2.3 Migrate ExpenseDetailView to use new ViewModel
+- [x] 2.3 Migrate ExpenseDetailView to use new ViewModel
   - Replace @FetchRequest with @StateObject ExpenseDetailViewModel
   - Update view to handle all ViewState cases
   - Implement proper loading and error UI states
   - Add user-friendly error messages and recovery actions
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 2.4 Test ExpenseDetailView migration
+- [x] 2.4 Test ExpenseDetailView migration
   - Test all view states (loading, loaded, error, deleted)
   - Verify edit and delete operations work correctly
   - Test error scenarios and recovery mechanisms

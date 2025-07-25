@@ -5,6 +5,25 @@ import CloudKit
 class CoreDataManager: ObservableObject {
     static let shared = CoreDataManager()
     
+    // Static method for testing
+    static func createForTesting() -> CoreDataManager {
+        let manager = CoreDataManager()
+        
+        // Configure in-memory store for testing
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        manager.container.persistentStoreDescriptions = [description]
+        
+        // Load the persistent store
+        manager.container.loadPersistentStores { (storeDescription, error) in
+            if let error = error as NSError? {
+                fatalError("Unresolved error \(error), \(error.userInfo)")
+            }
+        }
+        
+        return manager
+    }
+    
     private let container: NSPersistentContainer
     
     var viewContext: NSManagedObjectContext {
@@ -19,6 +38,9 @@ class CoreDataManager: ObservableObject {
     private init() {
         // Initialize Core Data container
         container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
+        
+        // Register entity classes
+        registerEntityClasses()
         
         // Configure CloudKit integration if enabled
         if UserDefaults.standard.bool(forKey: "enableCloudSync") {
@@ -43,6 +65,16 @@ class CoreDataManager: ObservableObject {
     }
     
     // MARK: - Helper Methods
+    
+    // Register entity classes to ensure proper mapping
+    private func registerEntityClasses() {
+        NSEntityDescription.entity(forEntityName: "Tag", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerTag"
+        NSEntityDescription.entity(forEntityName: "Category", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerCategory"
+        NSEntityDescription.entity(forEntityName: "Expense", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerExpense"
+        NSEntityDescription.entity(forEntityName: "ExpenseItem", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerExpenseItem"
+        NSEntityDescription.entity(forEntityName: "Receipt", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerReceipt"
+        NSEntityDescription.entity(forEntityName: "ReceiptItem", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerReceiptItem"
+    }
     
     func save() {
         if viewContext.hasChanges {

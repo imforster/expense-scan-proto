@@ -3,5 +3,11 @@ import CoreData
 
 @objc(ReceiptScannerExpenseTrackerExpenseItem)
 public class ExpenseItem: NSManagedObject {
-    // Custom methods can be added here
+    // Convenience methods
+    func formattedAmount() -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "$"
+        return formatter.string(from: amount as NSNumber) ?? "$0.00"
+    }
 }
