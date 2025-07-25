@@ -13,8 +13,8 @@ struct ExpenseListView: View {
     @State private var showingExpenseDetail = false
     @State private var showingAddExpense = false
     
-    init(context: NSManagedObjectContext) {
-        self._viewModel = StateObject(wrappedValue: ExpenseListViewModel(context: context))
+    init() {
+        self._viewModel = StateObject(wrappedValue: ExpenseListViewModel())
     }
     
     var body: some View {
@@ -88,13 +88,17 @@ struct ExpenseListView: View {
             // Content
             if viewModel.isLoading {
                 LoadingView(message: "Loading expenses...")
-            } else if let errorMessage = viewModel.errorMessage {
+            } else if let error = viewModel.currentError {
                 ErrorView(
                     title: "Error Loading Expenses",
-                    message: errorMessage,
-                    retryAction: { viewModel.loadExpenses() }
+                    message: error.localizedDescription,
+                    retryAction: { 
+                        Task {
+                            await viewModel.retryLastOperation()
+                        }
+                    }
                 )
-            } else if viewModel.filteredExpenses.isEmpty {
+            } else if viewModel.displayedExpenses.isEmpty {
                 emptyStateView
             } else {
                 expenseListContent
@@ -120,11 +124,15 @@ struct ExpenseListView: View {
         .sheet(isPresented: $showingAddExpense) {
             ExpenseEditView(context: viewContext)
                 .onDisappear {
-                    viewModel.loadExpenses()
+                    Task {
+                        await viewModel.loadExpenses()
+                    }
                 }
         }
         .onAppear {
-            viewModel.loadExpenses()
+            Task {
+                await viewModel.loadExpenses()
+            }
         }
     }
     
@@ -145,7 +153,7 @@ struct ExpenseListView: View {
     private var expenseListContent: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
-                ForEach(viewModel.filteredExpenses, id: \.id) { expense in
+                ForEach(viewModel.displayedExpenses, id: \.id) { expense in
                     ExpenseRowView(expense: expense) {
                         selectedExpense = expense
                         // Fire the fault to ensure all data is loaded
@@ -267,7 +275,7 @@ struct ExpenseRowView: View {
 #if DEBUG
 struct ExpenseListView_Previews: PreviewProvider {
     static var previews: some View {
-        ExpenseListView(context: PersistenceController.preview.container.viewContext)
+        ExpenseListView()
     }
 }
 #endif

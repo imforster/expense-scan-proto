@@ -94,7 +94,7 @@
   - Implement performance optimizations for large datasets
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 7.1, 7.2, 7.3_
 
-- [ ] 3.1 Implement ExpenseListViewModel core functionality
+- [x] 3.1 Implement ExpenseListViewModel core functionality
   - Create ViewState enum for list states (loading, loaded, empty, error)
   - Integrate ExpenseDataService for data management
   - Implement service delegation for filtering and sorting
