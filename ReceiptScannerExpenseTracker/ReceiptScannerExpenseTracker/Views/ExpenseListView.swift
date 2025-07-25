@@ -14,7 +14,9 @@ struct ExpenseListView: View {
     @State private var showingAddExpense = false
     
     init() {
-        self._viewModel = StateObject(wrappedValue: ExpenseListViewModel())
+        // Ensure ExpenseListViewModel uses the same context as the view
+        let dataService = ExpenseDataService(context: CoreDataManager.shared.viewContext)
+        self._viewModel = StateObject(wrappedValue: ExpenseListViewModel(dataService: dataService))
     }
     
     var body: some View {
@@ -117,7 +119,7 @@ struct ExpenseListView: View {
         }) {
             if let expense = selectedExpense {
                 NavigationView {
-                    ExpenseDetailView(expenseID: expense.objectID, context: viewContext)
+                    ExpenseDetailView(expenseID: expense.objectID)
                 }
             }
         }
@@ -155,8 +157,6 @@ struct ExpenseListView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.displayedExpenses, id: \.id) { expense in
                     ExpenseRowView(expense: expense) {
-                        // Ensure the expense is properly loaded in the current context
-                        viewContext.refresh(expense, mergeChanges: false)
                         selectedExpense = expense
                         showingExpenseDetail = true
                     }
