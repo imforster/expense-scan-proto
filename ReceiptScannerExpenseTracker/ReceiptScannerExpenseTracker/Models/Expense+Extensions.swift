@@ -71,48 +71,18 @@ extension Expense {
 }
 
 // MARK: - Category Extensions for Safe Data Handling
-extension Category {
-    
-    /// Safe category name with fallback
-    var safeName: String {
-        return self.name
-    }
-    
-    /// Safe category icon with fallback
-    var safeIcon: String {
-        return self.icon
-    }
-}
+// Note: safeName and safeIcon are already defined in Category+CoreDataProperties.swift
 
 // MARK: - Tag Extensions for Safe Data Handling
-extension Tag {
-    
-    /// Safe tag name with fallback
-    var safeName: String {
-        return self.name
-    }
-}
+// Note: safeName is already defined in Tag+CoreDataProperties.swift
 
 // MARK: - ExpenseItem Extensions for Safe Data Handling
-extension ExpenseItem {
-    
-    /// Safe item name with fallback
-    var safeName: String {
-        return self.name
-    }
-    
-    // Note: formattedAmount() is already defined in ExpenseItem+CoreDataProperties.swift
-}
+// Note: safeName and formattedAmount() are already defined in ExpenseItem+CoreDataProperties.swift
 
 // MARK: - Receipt Extensions for Safe Data Handling
 extension Receipt {
     
-    /// Safe merchant name with fallback
-    var safeMerchantName: String {
-        return self.merchantName
-    }
-    
-    // Note: formattedTotalAmount() and formattedDate() are already defined in Receipt+CoreDataProperties.swift
+    // Note: safeMerchantName, formattedTotalAmount() and formattedDate() are already defined in Receipt+CoreDataProperties.swift
     
     /// Safe receipt items array
     var safeReceiptItems: [ReceiptItem] {
@@ -123,15 +93,7 @@ extension Receipt {
 }
 
 // MARK: - ReceiptItem Extensions for Safe Data Handling
-extension ReceiptItem {
-    
-    /// Safe item name with fallback
-    var safeName: String {
-        return self.name
-    }
-    
-    // Note: formattedTotalPrice() is already defined in ReceiptItem+CoreDataProperties.swift
-}
+// Note: safeName and formattedTotalPrice() are already defined in ReceiptItem+CoreDataProperties.swift
 
 // MARK: - NumberFormatter Extension
 extension NumberFormatter {

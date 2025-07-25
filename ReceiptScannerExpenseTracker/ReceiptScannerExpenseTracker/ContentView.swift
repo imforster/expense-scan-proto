@@ -215,7 +215,7 @@ struct ContentView: View {
     }
     
     private var expensesPlaceholderView: some View {
-        ExpenseListView(context: viewContext)
+        ExpenseListView()
     }
     
     private var reportsPlaceholderView: some View {

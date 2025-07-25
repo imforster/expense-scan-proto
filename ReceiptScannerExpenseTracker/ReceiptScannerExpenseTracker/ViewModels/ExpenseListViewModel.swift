@@ -5,135 +5,235 @@ import Combine
 
 @MainActor
 class ExpenseListViewModel: ObservableObject {
+    
+    // MARK: - ViewState Enum
+    
+    /// Represents the current state of the expense list view
+    enum ViewState: Equatable {
+        case loading
+        case loaded([Expense])
+        case empty
+        case error(ExpenseError)
+        
+        static func == (lhs: ViewState, rhs: ViewState) -> Bool {
+            switch (lhs, rhs) {
+            case (.loading, .loading), (.empty, .empty):
+                return true
+            case (.loaded(let lhsExpenses), .loaded(let rhsExpenses)):
+                return lhsExpenses.count == rhsExpenses.count
+            case (.error(let lhsError), .error(let rhsError)):
+                return lhsError == rhsError
+            default:
+                return false
+            }
+        }
+    }
+    
     // MARK: - Published Properties
-    @Published var filteredExpenses: [Expense] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
-
-    // MARK: - Filter & Sort Properties with Observers
-    // Any change to these properties will trigger a recalculation of the filtered list.
-    @Published var searchText: String = "" { didSet { updateFilteredExpenses() } }
-    @Published var selectedCategory: Category? = nil { didSet { updateFilteredExpenses() } }
-    @Published var selectedDateRange: DateRange = .all { didSet { updateFilteredExpenses() } }
-    @Published var selectedAmountRange: AmountRange = .all { didSet { updateFilteredExpenses() } }
-    @Published var selectedVendor: String? = nil { didSet { updateFilteredExpenses() } }
-    @Published var sortOption: SortOption = .dateDescending { didSet { updateFilteredExpenses() } }
-    @Published var customDateRange: DateInterval? = nil { didSet { updateFilteredExpenses() } }
-    @Published var customAmountRange: ClosedRange<Decimal>? = nil { didSet { updateFilteredExpenses() } }
-
-    // MARK: - Private State
-    private var sourceExpenses: [Expense] = []
-    private let context: NSManagedObjectContext
+    
+    @Published var viewState: ViewState = .loading
+    @Published var displayedExpenses: [Expense] = []
+    @Published var filterCriteria = ExpenseFilterService.FilterCriteria()
+    @Published var sortOption: ExpenseSortService.SortOption = .dateDescending
+    
+    // Individual filter properties for UI binding
+    @Published var searchText: String = ""
+    @Published var selectedCategory: Category? = nil
+    @Published var selectedDateRange: DateRange = .all
+    @Published var selectedAmountRange: AmountRange = .all
+    @Published var selectedVendor: String? = nil
+    @Published var customDateRange: DateInterval? = nil
+    @Published var customAmountRange: ClosedRange<Decimal>? = nil
+    
+    // MARK: - Private Properties
+    
+    private let dataService: ExpenseDataService
+    private let filterService: ExpenseFilterService
+    private let sortService: ExpenseSortService
     private var cancellables = Set<AnyCancellable>()
 
-    init(context: NSManagedObjectContext) {
-        self.context = context
+    // MARK: - Initialization
+    
+    init(
+        dataService: ExpenseDataService? = nil,
+        filterService: ExpenseFilterService = ExpenseFilterService(),
+        sortService: ExpenseSortService = ExpenseSortService()
+    ) {
+        self.dataService = dataService ?? ExpenseDataService()
+        self.filterService = filterService
+        self.sortService = sortService
         
-        // Set up notification observer for expense data changes
-        NotificationCenter.default.publisher(for: .expenseDataChanged)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.loadExpenses()
+        setupBindings()
+        setupFilterObservers()
+    }
+    
+    // MARK: - Setup Methods
+    
+    /// Sets up reactive bindings between services and view model
+    private func setupBindings() {
+        // Observe data service changes
+        dataService.$expenses
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] expenses in
+                self?.handleExpensesUpdate(expenses)
+            }
+            .store(in: &cancellables)
+        
+        dataService.$isLoading
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isLoading in
+                self?.handleLoadingStateChange(isLoading)
+            }
+            .store(in: &cancellables)
+        
+        dataService.$error
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] error in
+                self?.handleErrorStateChange(error)
             }
             .store(in: &cancellables)
     }
+    
+    /// Sets up observers for filter property changes
+    private func setupFilterObservers() {
+        // Combine all filter properties into a single publisher
+        Publishers.CombineLatest4(
+            $searchText.debounce(for: .milliseconds(300), scheduler: DispatchQueue.main),
+            $selectedCategory,
+            $selectedDateRange,
+            $selectedAmountRange
+        )
+        .combineLatest(
+            Publishers.CombineLatest4(
+                $selectedVendor,
+                $customDateRange,
+                $customAmountRange,
+                $sortOption
+            )
+        )
+        .sink { [weak self] filterData, additionalData in
+            self?.updateFilterCriteria(
+                searchText: filterData.0,
+                category: filterData.1,
+                dateRange: filterData.2,
+                amountRange: filterData.3,
+                vendor: additionalData.0,
+                customDateRange: additionalData.1,
+                customAmountRange: additionalData.2,
+                sortOption: additionalData.3
+            )
+        }
+        .store(in: &cancellables)
+    }
 
-    // MARK: - Data Loading
-    func loadExpenses() {
-        isLoading = true
-        errorMessage = nil
-        
-        // Defer the fetch to the next run loop cycle.
-        // This gives the SwiftUI view time to finish its initial setup,
-        // preventing a race condition on the first load.
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            let request: NSFetchRequest<Expense> = Expense.fetchRequest()
-            
-            do {
-                self.sourceExpenses = try self.context.fetch(request)
-                // After fetching, immediately apply filters.
-                self.updateFilteredExpenses()
-            } catch {
-                self.errorMessage = "Failed to load expenses: \(error.localizedDescription)"
-                self.sourceExpenses = []
-            }
-            
-            self.isLoading = false
+    // MARK: - Public Methods
+    
+    /// Loads expenses using the data service
+    func loadExpenses() async {
+        await dataService.loadExpenses()
+    }
+    
+    /// Refreshes the expense data
+    func refreshExpenses() async {
+        await dataService.refreshExpenses()
+    }
+    
+    /// Deletes an expense
+    func deleteExpense(_ expense: Expense) async {
+        do {
+            try await dataService.deleteExpense(expense)
+        } catch {
+            // Error is handled by the data service and propagated through bindings
         }
     }
 
-    // MARK: - Core Filtering and Sorting Logic
-    private func updateFilteredExpenses() {
-        // Guard against empty source expenses
-        guard !sourceExpenses.isEmpty else {
-            self.filteredExpenses = []
+    // MARK: - Private Methods - State Management
+    
+    /// Handles updates from the data service
+    private func handleExpensesUpdate(_ expenses: [Expense]) {
+        Task {
+            await applyFiltersAndSort(to: expenses)
+        }
+    }
+    
+    /// Handles loading state changes from the data service
+    private func handleLoadingStateChange(_ isLoading: Bool) {
+        if isLoading && viewState != .loading {
+            viewState = .loading
+        }
+    }
+    
+    /// Handles error state changes from the data service
+    private func handleErrorStateChange(_ error: ExpenseError?) {
+        if let error = error {
+            viewState = .error(error)
+        }
+    }
+    
+    /// Updates filter criteria based on UI property changes
+    private func updateFilterCriteria(
+        searchText: String,
+        category: Category?,
+        dateRange: DateRange,
+        amountRange: AmountRange,
+        vendor: String?,
+        customDateRange: DateInterval?,
+        customAmountRange: ClosedRange<Decimal>?,
+        sortOption: ExpenseSortService.SortOption
+    ) {
+        // Convert UI properties to filter criteria
+        let dateInterval = (dateRange == .custom) ? customDateRange : dateRange.dateInterval
+        let amountRangeValue = (amountRange == .custom) ? customAmountRange : amountRange.range
+        
+        let categoryData = category.map { CategoryData(id: $0.id, name: $0.name) }
+        
+        filterCriteria = ExpenseFilterService.FilterCriteria(
+            searchText: searchText.isEmpty ? nil : searchText,
+            category: categoryData,
+            dateRange: dateInterval,
+            amountRange: amountRangeValue,
+            vendor: vendor
+        )
+        
+        self.sortOption = sortOption
+        
+        // Apply filters to current expenses
+        Task {
+            await applyFiltersAndSort(to: dataService.expenses)
+        }
+    }
+    
+    /// Applies filters and sorting using the services
+    private func applyFiltersAndSort(to expenses: [Expense]) async {
+        guard !expenses.isEmpty else {
+            await MainActor.run {
+                self.displayedExpenses = []
+                self.viewState = .empty
+            }
             return
         }
         
-        var filtered = sourceExpenses
-
-        // Apply search filter
-        if !searchText.isEmpty {
-            filtered = filtered.filter {
-                $0.safeMerchant.localizedCaseInsensitiveContains(searchText) ||
-                $0.safeNotes.localizedCaseInsensitiveContains(searchText) ||
-                $0.safeCategoryName.localizedCaseInsensitiveContains(searchText)
+        // Apply filtering
+        let filteredExpenses = filterService.filter(expenses, with: filterCriteria)
+        
+        // Apply sorting
+        let sortedExpenses = await sortService.sortAsync(filteredExpenses, by: sortOption)
+        
+        await MainActor.run {
+            self.displayedExpenses = sortedExpenses
+            
+            if sortedExpenses.isEmpty && !filterCriteria.isEmpty {
+                // No results after filtering
+                self.viewState = .empty
+            } else {
+                self.viewState = .loaded(sortedExpenses)
             }
         }
-        
-        // Apply category filter
-        if let category = selectedCategory {
-            filtered = filtered.filter { $0.category == category }
-        }
-        
-        // Apply date range filter
-        if let dateInterval = (selectedDateRange == .custom) ? customDateRange : selectedDateRange.dateInterval {
-            filtered = filtered.filter { dateInterval.contains($0.date) }
-        }
-        
-        // Apply amount range filter
-        if let amountRange = (selectedAmountRange == .custom) ? customAmountRange : selectedAmountRange.range {
-            filtered = filtered.filter { amountRange.contains($0.amount.decimalValue) }
-        }
-        
-        // Apply vendor filter
-        if let vendor = selectedVendor, !vendor.isEmpty {
-            filtered = filtered.filter { $0.safeMerchant == vendor }
-        }
-        
-        // Apply sorting and update the published property
-        self.filteredExpenses = sortExpenses(filtered, by: sortOption)
     }
+
+    // MARK: - Filter Management
     
-    private func sortExpenses(_ expenses: [Expense], by sortOption: SortOption) -> [Expense] {
-        // Guard against empty expenses
-        guard !expenses.isEmpty else { return [] }
-        
-        // Use try-catch to handle any potential errors during sorting
-        do {
-            switch sortOption {
-            case .dateAscending: 
-                return expenses.sorted { $0.date < $1.date }
-            case .dateDescending: 
-                return expenses.sorted { $0.date > $1.date }
-            case .amountAscending: 
-                return expenses.sorted { $0.amount.decimalValue < $1.amount.decimalValue }
-            case .amountDescending: 
-                return expenses.sorted { $0.amount.decimalValue > $1.amount.decimalValue }
-            case .merchantAscending: 
-                return expenses.sorted { $0.safeMerchant.localizedCaseInsensitiveCompare($1.safeMerchant) == .orderedAscending }
-            case .merchantDescending: 
-                return expenses.sorted { $0.safeMerchant.localizedCaseInsensitiveCompare($1.safeMerchant) == .orderedDescending }
-            }
-        } catch {
-            print("Error sorting expenses: \(error)")
-            return expenses // Return unsorted expenses if sorting fails
-        }
-    }
-
-    // MARK: - User Actions
+    /// Clears all active filters
     func clearAllFilters() {
         searchText = ""
         selectedCategory = nil
@@ -144,64 +244,84 @@ class ExpenseListViewModel: ObservableObject {
         customAmountRange = nil
     }
     
-    func deleteExpense(_ expense: Expense) {
-        context.delete(expense)
-        do {
-            try context.save()
-            loadExpenses()
-        } catch {
-            errorMessage = "Failed to delete expense: \(error.localizedDescription)"
-        }
+    /// Updates the sort option and applies it
+    func updateSort(_ option: ExpenseSortService.SortOption) async {
+        sortOption = option
+        await applyFiltersAndSort(to: dataService.expenses)
+    }
+    
+    /// Applies filters without changing sort
+    func applyFilters() async {
+        await applyFiltersAndSort(to: dataService.expenses)
     }
 
-    // MARK: - Helpers
-    func getUniqueVendors() -> [String] {
-        // Return empty array if there are no expenses
-        guard !sourceExpenses.isEmpty else { return [] }
-        return Array(Set(sourceExpenses.map { $0.safeMerchant })).sorted()
+    // MARK: - Computed Properties
+    
+    /// Returns true if any filters are currently active
+    var hasActiveFilters: Bool {
+        return !filterCriteria.isEmpty
     }
     
+    /// Returns a summary of active filters for display
+    var filterSummary: String {
+        return filterCriteria.activeFiltersDescription
+    }
+    
+    /// Returns the current error if in error state
+    var currentError: ExpenseError? {
+        if case .error(let error) = viewState {
+            return error
+        }
+        return nil
+    }
+    
+    /// Returns true if the view is currently loading
+    var isLoading: Bool {
+        return viewState == .loading
+    }
+    
+    /// Returns true if there are no expenses to display
+    var isEmpty: Bool {
+        return viewState == .empty
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Gets unique vendors from all expenses for filter options
+    func getUniqueVendors() -> [String] {
+        let allExpenses = dataService.expenses
+        guard !allExpenses.isEmpty else { return [] }
+        return Array(Set(allExpenses.map { $0.merchant })).sorted()
+    }
+    
+    /// Gets available categories for filter options
     func getAvailableCategories() -> [Category] {
-        let request: NSFetchRequest<Category> = Category.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Category.name, ascending: true)]
-        do {
-            return try context.fetch(request)
-        } catch {
-            return []
+        // This would typically come from a category service
+        // For now, we'll extract from existing expenses
+        let allExpenses = dataService.expenses
+        let categories = allExpenses.compactMap { $0.category }
+        return Array(Set(categories)).sorted { $0.name < $1.name }
+    }
+    
+    /// Retries the last failed operation
+    func retryLastOperation() async {
+        if case .error = viewState {
+            await loadExpenses()
         }
     }
     
-    var hasActiveFilters: Bool {
-        return !searchText.isEmpty || selectedCategory != nil || selectedDateRange != .all || selectedAmountRange != .all || selectedVendor != nil
-    }
-    
-    var filterSummary: String {
-        var components: [String] = []
-        if !searchText.isEmpty { components.append("Search: \(searchText)") }
-        if let category = selectedCategory { components.append("Category: \(category.safeName)") }
-        if selectedDateRange != .all { components.append("Date: \(selectedDateRange.rawValue)") }
-        if selectedAmountRange != .all { components.append("Amount: \(selectedAmountRange.rawValue)") }
-        if let vendor = selectedVendor { components.append("Vendor: \(vendor)") }
-        return components.joined(separator: ", ")
-    }
-    
-    // MARK: - Enums
-    enum SortOption: String, CaseIterable {
-        case dateAscending = "Date (Oldest First)"
-        case dateDescending = "Date (Newest First)"
-        case amountAscending = "Amount (Low to High)"
-        case amountDescending = "Amount (High to Low)"
-        case merchantAscending = "Merchant (A-Z)"
-        case merchantDescending = "Merchant (Z-A)"
-        
-        var systemImage: String {
-            switch self {
-            case .dateAscending, .dateDescending: return "calendar"
-            case .amountAscending, .amountDescending: return "dollarsign.circle"
-            case .merchantAscending, .merchantDescending: return "building.2"
+    /// Clears the current error state
+    func clearError() {
+        dataService.clearErrors()
+        if case .error = viewState {
+            viewState = .loading
+            Task {
+                await loadExpenses()
             }
         }
     }
+    
+
     
     enum DateRange: String, CaseIterable {
         case all = "All Time"
