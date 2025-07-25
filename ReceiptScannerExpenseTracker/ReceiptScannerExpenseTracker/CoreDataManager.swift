@@ -39,9 +39,6 @@ class CoreDataManager: ObservableObject {
         // Initialize Core Data container
         container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
         
-        // Register entity classes
-        registerEntityClasses()
-        
         // Configure CloudKit integration if enabled
         if UserDefaults.standard.bool(forKey: "enableCloudSync") {
             configureCloudKitIntegration()
@@ -66,15 +63,7 @@ class CoreDataManager: ObservableObject {
     
     // MARK: - Helper Methods
     
-    // Register entity classes to ensure proper mapping
-    private func registerEntityClasses() {
-        NSEntityDescription.entity(forEntityName: "Tag", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerTag"
-        NSEntityDescription.entity(forEntityName: "Category", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerCategory"
-        NSEntityDescription.entity(forEntityName: "Expense", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerExpense"
-        NSEntityDescription.entity(forEntityName: "ExpenseItem", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerExpenseItem"
-        NSEntityDescription.entity(forEntityName: "Receipt", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerReceipt"
-        NSEntityDescription.entity(forEntityName: "ReceiptItem", in: viewContext)?.managedObjectClassName = "ReceiptScannerExpenseTrackerReceiptItem"
-    }
+
     
     func save() {
         if viewContext.hasChanges {
