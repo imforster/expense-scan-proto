@@ -119,7 +119,7 @@ struct ExpenseListView: View {
         }) {
             if let expense = selectedExpense {
                 NavigationView {
-                    ExpenseDetailView(expenseID: expense.objectID)
+                    ExpenseDetailView(expenseID: expense.objectID, context: viewContext)
                 }
             }
         }
@@ -127,13 +127,18 @@ struct ExpenseListView: View {
             ExpenseEditView(context: CoreDataManager.shared.viewContext)
                 .onDisappear {
                     Task {
-                        await viewModel.loadExpenses()
+                        await viewModel.refreshExpenses()
                     }
                 }
         }
         .onAppear {
             Task {
                 await viewModel.loadExpenses()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .expenseDataChanged)) { _ in
+            Task {
+                await viewModel.refreshExpenses()
             }
         }
     }
