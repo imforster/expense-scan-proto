@@ -198,20 +198,105 @@ class ExpenseSortService {
     
     /// Performs the actual sorting with error handling
     private func performSort(_ expenses: [Expense], by option: SortOption) throws -> [Expense] {
-        return expenses.sorted { expense1, expense2 in
+        
+        // Filter out any invalid or deleted expenses before sorting with comprehensive checks
+        let validExpenses = expenses.compactMap { expense -> Expense? in
+            // Check if the expense object itself is valid
+            guard !expense.isDeleted else {
+                logger.warning("Expense object is deleted")
+                return nil
+            }
+            
+            // Check if the managed object context is valid
+            guard let context = expense.managedObjectContext else {
+                logger.warning("Expense object has no managed object context")
+                return nil
+            }
+            
+            // Check if the context itself is still valid (not deallocated)
+            // Note: NSManagedObjectContext doesn't have isDeleted property, but we can check if it's still accessible
+            
+            // Additional safety check: try to access a basic property to ensure object is accessible
+            do {
+                _ = expense.objectID
+                _ = expense.date // This will throw if the object is inaccessible
+                return expense
+            } catch {
+                logger.warning("Expense object is inaccessible: \(error.localizedDescription)")
+                return nil
+            }
+        }
+        
+        guard !validExpenses.isEmpty else {
+            logger.warning("No valid expenses to sort after filtering")
+            return []
+        }
+        
+        // Perform sorting with enhanced error handling
+        return validExpenses.sorted { expense1, expense2 in
+            // Double-check validity before comparison
+            guard !expense1.isDeleted && !expense2.isDeleted,
+                  expense1.managedObjectContext != nil && expense2.managedObjectContext != nil else {
+                logger.warning("Invalid expense objects detected during comparison")
+                // Fallback to object ID comparison for stability
+                return expense1.objectID.description < expense2.objectID.description
+            }
+            
             do {
                 return try compareExpenses(expense1, expense2, using: option)
             } catch {
                 // Log the error but continue with a fallback comparison
                 logger.error("Comparison failed: \(error.localizedDescription), using fallback")
-                return expense1.date < expense2.date // Fallback to date comparison
+                
+                // Safe fallback comparison with additional checks
+                do {
+                    // Try date comparison first
+                    let date1 = expense1.date
+                    let date2 = expense2.date
+                    return date1 < date2
+                } catch {
+                    logger.error("Date comparison failed, using object ID comparison")
+                    // Ultimate fallback: compare object IDs
+                    return expense1.objectID.description < expense2.objectID.description
+                }
             }
         }
     }
     
     /// Performs multi-level sorting with primary and secondary criteria
     private func performMultiLevelSort(_ expenses: [Expense], primary: SortOption, secondary: SortOption) throws -> [Expense] {
-        return expenses.sorted { expense1, expense2 in
+        // First filter out invalid expenses using the same logic as performSort
+        let validExpenses = expenses.compactMap { expense -> Expense? in
+            guard !expense.isDeleted,
+                  let context = expense.managedObjectContext else {
+                logger.warning("Invalid expense object in multi-level sort")
+                return nil
+            }
+            
+            // Test accessibility
+            do {
+                _ = expense.objectID
+                _ = expense.date
+                return expense
+            } catch {
+                logger.warning("Expense object is inaccessible in multi-level sort: \(error.localizedDescription)")
+                return nil
+            }
+        }
+        
+        guard !validExpenses.isEmpty else {
+            logger.warning("No valid expenses for multi-level sort")
+            return []
+        }
+        
+        return validExpenses.sorted { expense1, expense2 in
+            // Double-check validity before comparison
+            guard !expense1.isDeleted && !expense2.isDeleted,
+                  expense1.managedObjectContext != nil && expense2.managedObjectContext != nil else {
+                logger.warning("Invalid expense objects detected during multi-level comparison")
+                return expense1.objectID.description < expense2.objectID.description
+            }
+            
             do {
                 let primaryResult = try compareExpenses(expense1, expense2, using: primary)
                 
@@ -223,75 +308,140 @@ class ExpenseSortService {
                 return primaryResult
             } catch {
                 logger.error("Multi-level comparison failed: \(error.localizedDescription), using fallback")
-                return expense1.date < expense2.date
+                
+                // Safe fallback
+                do {
+                    return expense1.date < expense2.date
+                } catch {
+                    logger.error("Date fallback failed in multi-level sort, using object ID")
+                    return expense1.objectID.description < expense2.objectID.description
+                }
             }
         }
     }
     
     /// Compares two expenses using the specified sort option
     private func compareExpenses(_ expense1: Expense, _ expense2: Expense, using option: SortOption) throws -> Bool {
+        // Safety check: ensure objects are valid and not deleted
+        guard let context1 = expense1.managedObjectContext, !expense1.isDeleted else {
+            logger.warning("Expense1 object is deleted or has no context")
+            throw NSError(domain: "ExpenseSortService", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Cannot compare deleted expense objects"])
+        }
+        
+        guard let context2 = expense2.managedObjectContext, !expense2.isDeleted else {
+            logger.warning("Expense2 object is deleted or has no context")
+            throw NSError(domain: "ExpenseSortService", code: 1002, userInfo: [NSLocalizedDescriptionKey: "Cannot compare deleted expense objects"])
+        }
+        
         switch option {
         case .dateAscending:
-            return expense1.date < expense2.date
+            let date1 = expense1.date
+            let date2 = expense2.date
+            return date1 < date2
         case .dateDescending:
-            return expense1.date > expense2.date
+            let date1 = expense1.date
+            let date2 = expense2.date
+            return date1 > date2
             
         case .amountAscending:
-            return expense1.amount.decimalValue < expense2.amount.decimalValue
+            let amount1 = expense1.amount.decimalValue
+            let amount2 = expense2.amount.decimalValue
+            return amount1 < amount2
         case .amountDescending:
-            return expense1.amount.decimalValue > expense2.amount.decimalValue
+            let amount1 = expense1.amount.decimalValue
+            let amount2 = expense2.amount.decimalValue
+            return amount1 > amount2
             
         case .merchantAscending:
-            return expense1.safeMerchant.localizedCaseInsensitiveCompare(expense2.safeMerchant) == .orderedAscending
+            let merchant1 = expense1.safeMerchant
+            let merchant2 = expense2.safeMerchant
+            return merchant1.localizedCaseInsensitiveCompare(merchant2) == .orderedAscending
         case .merchantDescending:
-            return expense1.safeMerchant.localizedCaseInsensitiveCompare(expense2.safeMerchant) == .orderedDescending
+            let merchant1 = expense1.safeMerchant
+            let merchant2 = expense2.safeMerchant
+            return merchant1.localizedCaseInsensitiveCompare(merchant2) == .orderedDescending
             
         case .categoryAscending:
-            return expense1.safeCategoryName.localizedCaseInsensitiveCompare(expense2.safeCategoryName) == .orderedAscending
+            let category1 = expense1.safeCategoryName
+            let category2 = expense2.safeCategoryName
+            return category1.localizedCaseInsensitiveCompare(category2) == .orderedAscending
         case .categoryDescending:
-            return expense1.safeCategoryName.localizedCaseInsensitiveCompare(expense2.safeCategoryName) == .orderedDescending
+            let category1 = expense1.safeCategoryName
+            let category2 = expense2.safeCategoryName
+            return category1.localizedCaseInsensitiveCompare(category2) == .orderedDescending
             
         case .paymentMethodAscending:
-            return expense1.safePaymentMethod.localizedCaseInsensitiveCompare(expense2.safePaymentMethod) == .orderedAscending
+            let payment1 = expense1.safePaymentMethod
+            let payment2 = expense2.safePaymentMethod
+            return payment1.localizedCaseInsensitiveCompare(payment2) == .orderedAscending
         case .paymentMethodDescending:
-            return expense1.safePaymentMethod.localizedCaseInsensitiveCompare(expense2.safePaymentMethod) == .orderedDescending
+            let payment1 = expense1.safePaymentMethod
+            let payment2 = expense2.safePaymentMethod
+            return payment1.localizedCaseInsensitiveCompare(payment2) == .orderedDescending
             
         case .recurringFirst:
-            if expense1.isRecurring != expense2.isRecurring {
-                return expense1.isRecurring && !expense2.isRecurring
+            let recurring1 = expense1.isRecurring
+            let recurring2 = expense2.isRecurring
+            if recurring1 != recurring2 {
+                return recurring1 && !recurring2
             }
             // If both have same recurring status, sort by date (newest first)
-            return expense1.date > expense2.date
+            let date1 = expense1.date
+            let date2 = expense2.date
+            return date1 > date2
             
         case .nonRecurringFirst:
-            if expense1.isRecurring != expense2.isRecurring {
-                return !expense1.isRecurring && expense2.isRecurring
+            let recurring1 = expense1.isRecurring
+            let recurring2 = expense2.isRecurring
+            if recurring1 != recurring2 {
+                return !recurring1 && recurring2
             }
             // If both have same recurring status, sort by date (newest first)
-            return expense1.date > expense2.date
+            let date1 = expense1.date
+            let date2 = expense2.date
+            return date1 > date2
         }
     }
     
     /// Checks if two expenses are equal for the given sort option
     private func isEqual(_ expense1: Expense, _ expense2: Expense, using option: SortOption) -> Bool {
+        // Safety check: ensure objects are valid
+        guard !expense1.isDeleted && !expense2.isDeleted,
+              expense1.managedObjectContext != nil && expense2.managedObjectContext != nil else {
+            logger.warning("Attempting to compare invalid expense objects in isEqual")
+            return false
+        }
+        
         switch option {
         case .dateAscending, .dateDescending:
-            return expense1.date == expense2.date
+            let date1 = expense1.date
+            let date2 = expense2.date
+            return date1 == date2
             
         case .amountAscending, .amountDescending:
-            return expense1.amount.decimalValue == expense2.amount.decimalValue
+            let amount1 = expense1.amount.decimalValue
+            let amount2 = expense2.amount.decimalValue
+            return amount1 == amount2
             
         case .merchantAscending, .merchantDescending:
-            return expense1.safeMerchant.localizedCaseInsensitiveCompare(expense2.safeMerchant) == .orderedSame
+            let merchant1 = expense1.safeMerchant
+            let merchant2 = expense2.safeMerchant
+            return merchant1.localizedCaseInsensitiveCompare(merchant2) == .orderedSame
             
         case .categoryAscending, .categoryDescending:
-            return expense1.safeCategoryName.localizedCaseInsensitiveCompare(expense2.safeCategoryName) == .orderedSame
+            let category1 = expense1.safeCategoryName
+            let category2 = expense2.safeCategoryName
+            return category1.localizedCaseInsensitiveCompare(category2) == .orderedSame
             
         case .paymentMethodAscending, .paymentMethodDescending:
-            return expense1.safePaymentMethod.localizedCaseInsensitiveCompare(expense2.safePaymentMethod) == .orderedSame
+            let payment1 = expense1.safePaymentMethod
+            let payment2 = expense2.safePaymentMethod
+            return payment1.localizedCaseInsensitiveCompare(payment2) == .orderedSame
             
         case .recurringFirst, .nonRecurringFirst:
-            return expense1.isRecurring == expense2.isRecurring
+            let recurring1 = expense1.isRecurring
+            let recurring2 = expense2.isRecurring
+            return recurring1 == recurring2
         }
     }
 }

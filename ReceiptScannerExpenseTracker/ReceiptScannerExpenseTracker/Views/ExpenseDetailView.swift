@@ -19,10 +19,15 @@ struct ExpenseDetailView: View {
         return formatter
     }()
     
-    // Initialize with the expenseID and create the ViewModel
-    init(expenseID: NSManagedObjectID) {
-        // Use the shared context for consistency
-        let dataService = ExpenseDataService(context: CoreDataManager.shared.viewContext)
+    // Store the expense ID for safe access
+    private let expenseID: NSManagedObjectID
+    
+    // Initialize with the expenseID and context
+    init(expenseID: NSManagedObjectID, context: NSManagedObjectContext? = nil) {
+        self.expenseID = expenseID
+        // Use the provided context or fall back to shared context
+        let contextToUse = context ?? CoreDataManager.shared.viewContext
+        let dataService = ExpenseDataService(context: contextToUse)
         _viewModel = StateObject(wrappedValue: ExpenseDetailViewModel(dataService: dataService, expenseID: expenseID))
     }
     
@@ -48,24 +53,26 @@ struct ExpenseDetailView: View {
         .navigationTitle("Expense Details")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .navigationBarItems(
-            leading: Button("Close") {
-                dismiss()
-            },
-            trailing: navigationBarTrailingItems
-        )
-        .sheet(isPresented: $showingEditView, onDismiss: {
-            // Simply dismiss the view after editing to avoid any CoreData issues
-            dismiss()
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
             
-            // Post notification that expense was edited
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+            ToolbarItem(placement: .navigationBarTrailing) {
+                navigationBarTrailingItems
+            }
+        }
+        .sheet(isPresented: $showingEditView, onDismiss: {
+            // Refresh the expense data after editing
+            Task {
+                await viewModel.refreshExpense()
             }
         }) {
             if let expense = viewModel.expense {
-                // Use the expense's own context to avoid context mismatch
-                ExpenseEditView(expense: expense, context: expense.managedObjectContext!)
+                // Use the same context as the expense object to avoid context mismatch
+                ExpenseEditView(expense: expense, context: expense.managedObjectContext ?? viewContext)
             }
         }
         .alert("Delete Expense", isPresented: $showingDeleteAlert) {
@@ -79,6 +86,12 @@ struct ExpenseDetailView: View {
         .task {
             // Ensure data loads when view appears
             await viewModel.loadExpense()
+        }
+        .onDisappear {
+            // Clean up when view disappears to prevent crashes
+            Task {
+                await viewModel.cleanup()
+            }
         }
     }
     
@@ -253,17 +266,18 @@ struct ExpenseDetailView: View {
                 
                 // Category
                 if let category = expense.category {
+                    let categoryColor = Color(hex: category.colorHex) ?? .blue
                     HStack {
                         Image(systemName: category.safeIcon)
-                            .foregroundColor(category.color)
+                            .foregroundColor(categoryColor)
                         
                         Text(category.safeName)
                             .font(.subheadline)
-                            .foregroundColor(category.color)
+                            .foregroundColor(categoryColor)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(category.color.opacity(0.1))
+                    .background(categoryColor.opacity(0.1))
                     .cornerRadius(16)
                 }
                 
