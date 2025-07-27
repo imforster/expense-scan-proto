@@ -45,7 +45,8 @@ extension Expense {
     
     /// Safe category color with fallback
     var safeCategoryColor: Color {
-        return self.category?.color ?? .blue
+        guard let category = self.category else { return .blue }
+        return Color(hex: category.colorHex) ?? .blue
     }
     
     /// Safe category icon with fallback

@@ -41,6 +41,26 @@ class ExpenseDataService: NSObject, ObservableObject {
         self.context = context
         self.backgroundContext = CoreDataManager.shared.createBackgroundContext()
         super.init()
+        
+        // Listen for context save notifications to refresh data
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(contextDidSave(_:)),
+            name: .NSManagedObjectContextDidSave,
+            object: nil
+        )
+        
+        // Listen for custom expense data change notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(expenseDataChanged(_:)),
+            name: .expenseDataChanged,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Public Methods
@@ -295,9 +315,27 @@ class ExpenseDataService: NSObject, ObservableObject {
                     }
                     
                     // Ensure the expense is not deleted and is accessible
-                    if expense.isDeleted || expense.isFault {
-                        // Try to refresh the object
-                        self.context.refresh(expense, mergeChanges: false)
+                    if expense.isDeleted {
+                        self.logger.warning("Expense with ID \(id) has been deleted")
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
+                    // If the object is a fault, try to refresh it
+                    if expense.isFault {
+                        do {
+                            self.context.refresh(expense, mergeChanges: true)
+                            // Check again if it's still valid after refresh
+                            if expense.isDeleted {
+                                self.logger.warning("Expense with ID \(id) was deleted after refresh")
+                                continuation.resume(returning: nil)
+                                return
+                            }
+                        } catch {
+                            self.logger.error("Failed to refresh expense with ID \(id): \(error.localizedDescription)")
+                            continuation.resume(returning: nil)
+                            return
+                        }
                     }
                     
                     continuation.resume(returning: expense)
@@ -383,6 +421,33 @@ class ExpenseDataService: NSObject, ObservableObject {
         error = nil
         retryAttempts.removeAll()
         logger.info("Cleared all error states")
+    }
+    
+    // MARK: - Notification Handlers
+    
+    @objc private func contextDidSave(_ notification: Notification) {
+        guard let savedContext = notification.object as? NSManagedObjectContext,
+              savedContext != context else { return }
+        
+        // Merge changes from other contexts
+        Task { @MainActor in
+            context.mergeChanges(fromContextDidSave: notification)
+            
+            // Refresh the fetched results controller
+            do {
+                try fetchedResultsController.performFetch()
+                expenses = fetchedResultsController.fetchedObjects ?? []
+                logger.info("Merged context changes and refreshed expenses")
+            } catch {
+                logger.error("Failed to refresh after context merge: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    @objc private func expenseDataChanged(_ notification: Notification) {
+        Task { @MainActor in
+            await refreshExpenses()
+        }
     }
 }
 

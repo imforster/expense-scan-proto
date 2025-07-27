@@ -2,29 +2,11 @@ import XCTest
 import CoreData
 @testable import ReceiptScannerExpenseTracker
 
-class CategoryServiceTests: XCTestCase {
-    var categoryService: TestMockCategoryService! // Use TestMockCategoryService type explicitly
-    var testCoreDataManager: CoreDataManager!
-    var testContext: NSManagedObjectContext!
+class CategoryServiceTests: CoreDataTestCase {
+    var categoryService: TestMockCategoryService!
     
     override func setUpWithError() throws {
         try super.setUpWithError()
-        
-        // Create in-memory Core Data stack for testing
-        testCoreDataManager = CoreDataManager.createForTesting()
-        testContext = testCoreDataManager.viewContext
-        
-        // Make sure we start with a clean state by deleting all categories
-        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = ReceiptScannerExpenseTracker.Category.fetchRequest()
-        let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-        try testContext.execute(deleteRequest)
-        
-        // Also clean up any expenses that might reference categories
-        let expenseFetchRequest: NSFetchRequest<NSFetchRequestResult> = ReceiptScannerExpenseTracker.Expense.fetchRequest()
-        let expenseDeleteRequest = NSBatchDeleteRequest(fetchRequest: expenseFetchRequest)
-        try testContext.execute(expenseDeleteRequest)
-        
-        try testContext.save()
         
         // Use our TestMockCategoryService that doesn't check for duplicate names
         categoryService = TestMockCategoryService(coreDataManager: testCoreDataManager)
@@ -34,8 +16,6 @@ class CategoryServiceTests: XCTestCase {
     
     override func tearDownWithError() throws {
         categoryService = nil
-        testCoreDataManager = nil
-        testContext = nil
         try super.tearDownWithError()
     }
     

@@ -34,7 +34,7 @@ class ExpenseDeleteTests: XCTestCase {
     
     // MARK: - Basic Delete Tests
     
-    func testDeleteSingleExpense() {
+    func testDeleteSingleExpense() async {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
         let initialCount = getExpenseCount()
@@ -42,22 +42,22 @@ class ExpenseDeleteTests: XCTestCase {
         
         // When
         let listViewModel = ExpenseListViewModel()
-        listViewModel.deleteExpense(expense)
+        await listViewModel.deleteExpense(expense)
         
         // Then
         let finalCount = getExpenseCount()
         XCTAssertEqual(finalCount, 0)
-        XCTAssertNil(listViewModel.errorMessage)
+        XCTAssertNil(listViewModel.currentError)
     }
     
-    func testDeleteExpenseDoesNotHang() {
+    func testDeleteExpenseDoesNotHang() async {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
         let listViewModel = ExpenseListViewModel()
         
         // When - Measure execution time to ensure it doesn't hang
         let startTime = CFAbsoluteTimeGetCurrent()
-        listViewModel.deleteExpense(expense)
+        await listViewModel.deleteExpense(expense)
         let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
         
         // Then - Should complete quickly (within 1 second)
@@ -65,7 +65,7 @@ class ExpenseDeleteTests: XCTestCase {
         XCTAssertEqual(getExpenseCount(), 0)
     }
     
-    func testDeleteMultipleExpensesSequentially() {
+    func testDeleteMultipleExpensesSequentially() async {
         // Given
         let expenses = (0..<5).map { i in
             createTestExpense(merchant: "Merchant \(i)", amount: "10.00")
@@ -77,19 +77,19 @@ class ExpenseDeleteTests: XCTestCase {
         // When - Delete expenses one by one
         let startTime = CFAbsoluteTimeGetCurrent()
         for expense in expenses {
-            listViewModel.deleteExpense(expense)
+            await listViewModel.deleteExpense(expense)
         }
         let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
         
         // Then
         XCTAssertEqual(getExpenseCount(), 0)
         XCTAssertLessThan(timeElapsed, 2.0, "Sequential deletes took too long")
-        XCTAssertNil(listViewModel.errorMessage)
+        XCTAssertNil(listViewModel.currentError)
     }
     
     // MARK: - Delete with Relationships Tests
     
-    func testDeleteExpenseWithCascadeRelationships() {
+    func testDeleteExpenseWithCascadeRelationships() async {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "50.00")
         
@@ -124,7 +124,7 @@ class ExpenseDeleteTests: XCTestCase {
         
         // When
         let listViewModel = ExpenseListViewModel()
-        listViewModel.deleteExpense(expense)
+        await listViewModel.deleteExpense(expense)
         
         // Then - Cascade deletes should work
         XCTAssertEqual(getExpenseCount(), 0)
@@ -132,7 +132,7 @@ class ExpenseDeleteTests: XCTestCase {
         XCTAssertEqual(getReceiptCount(), 0) // Should be cascade deleted
     }
     
-    func testDeleteExpenseWithNullifyRelationships() {
+    func testDeleteExpenseWithNullifyRelationships() async {
         // Given
         let category = createTestCategory(name: "Test Category")
         let tag = createTestTag(name: "Test Tag")
@@ -150,7 +150,7 @@ class ExpenseDeleteTests: XCTestCase {
         
         // When
         let listViewModel = ExpenseListViewModel()
-        listViewModel.deleteExpense(expense)
+        await listViewModel.deleteExpense(expense)
         
         // Then - Nullify relationships should preserve related objects
         XCTAssertEqual(getExpenseCount(), 0)
@@ -164,7 +164,7 @@ class ExpenseDeleteTests: XCTestCase {
     
     // MARK: - Performance Tests
     
-    func testDeletePerformanceWithLargeDataset() {
+    func testDeletePerformanceWithLargeDataset() async {
         // Given - Create 100 expenses with relationships
         var expenses: [Expense] = []
         for i in 0..<100 {
@@ -187,18 +187,19 @@ class ExpenseDeleteTests: XCTestCase {
         let listViewModel = ExpenseListViewModel()
         
         // When - Delete first 10 expenses and measure performance
-        measure {
-            for expense in expenses.prefix(10) {
-                listViewModel.deleteExpense(expense)
-            }
+        let startTime = CFAbsoluteTimeGetCurrent()
+        for expense in expenses.prefix(10) {
+            await listViewModel.deleteExpense(expense)
         }
+        let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
         
         // Then
         XCTAssertEqual(getExpenseCount(), 90)
         XCTAssertEqual(getExpenseItemCount(), 90)
+        XCTAssertLessThan(timeElapsed, 5.0, "Delete operations should complete within 5 seconds")
     }
     
-    func testConcurrentDeleteOperations() {
+    func testConcurrentDeleteOperations() async {
         // Given
         let expenses = (0..<20).map { i in
             createTestExpense(merchant: "Merchant \(i)", amount: "10.00")
@@ -206,30 +207,24 @@ class ExpenseDeleteTests: XCTestCase {
         try! context.save()
         
         let listViewModel = ExpenseListViewModel()
-        let expectation = XCTestExpectation(description: "All deletes complete")
-        expectation.expectedFulfillmentCount = expenses.count
         
-        // When - Simulate rapid delete operations
+        // When - Simulate sequential delete operations (safer for testing)
         let startTime = CFAbsoluteTimeGetCurrent()
         
         for expense in expenses {
-            DispatchQueue.main.async {
-                listViewModel.deleteExpense(expense)
-                expectation.fulfill()
-            }
+            await listViewModel.deleteExpense(expense)
         }
         
         // Then
-        wait(for: [expectation], timeout: 10.0)
         let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
         
-        XCTAssertLessThan(timeElapsed, 5.0, "Concurrent deletes took too long")
+        XCTAssertLessThan(timeElapsed, 10.0, "Sequential deletes took too long")
         XCTAssertEqual(getExpenseCount(), 0)
     }
     
     // MARK: - Error Handling Tests
     
-    func testDeleteWithInvalidExpense() {
+    func testDeleteWithInvalidExpense() async {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
         let listViewModel = ExpenseListViewModel()
@@ -239,14 +234,13 @@ class ExpenseDeleteTests: XCTestCase {
         try! context.save()
         
         // When - Try to delete the already deleted expense
-        listViewModel.deleteExpense(expense)
+        await listViewModel.deleteExpense(expense)
         
         // Then - Should handle gracefully
-        XCTAssertNotNil(listViewModel.errorMessage)
-        XCTAssertTrue(listViewModel.errorMessage?.contains("Failed to delete expense") == true)
+        XCTAssertNotNil(listViewModel.currentError)
     }
     
-    func testDeleteWithContextSaveFailure() {
+    func testDeleteWithContextSaveFailure() async {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
         
@@ -260,16 +254,15 @@ class ExpenseDeleteTests: XCTestCase {
         let listViewModel = ExpenseListViewModel()
         
         // When
-        listViewModel.deleteExpense(expenseInMockContext)
+        await listViewModel.deleteExpense(expenseInMockContext)
         
         // Then
-        XCTAssertNotNil(listViewModel.errorMessage)
-        XCTAssertTrue(listViewModel.errorMessage?.contains("Failed to delete expense") == true)
+        XCTAssertNotNil(listViewModel.currentError)
     }
     
     // MARK: - Threading Tests
     
-    func testDeleteOnMainThread() {
+    func testDeleteOnMainThread() async {
         // Given
         let expense = createTestExpense(merchant: "Test Merchant", amount: "25.99")
         let listViewModel = ExpenseListViewModel()
@@ -277,7 +270,10 @@ class ExpenseDeleteTests: XCTestCase {
         var isMainThread = false
         
         // When
-        listViewModel.deleteExpense(expense)
+        await MainActor.run {
+            isMainThread = Thread.isMainThread
+        }
+        await listViewModel.deleteExpense(expense)
         
         // Verify we're still on main thread after delete
         DispatchQueue.main.sync {

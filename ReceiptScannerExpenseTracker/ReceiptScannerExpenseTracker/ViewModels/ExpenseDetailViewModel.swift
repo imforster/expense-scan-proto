@@ -289,6 +289,19 @@ class ExpenseDetailViewModel: ObservableObject {
     
     // MARK: - Cleanup
     
+    /// Cleanup method to be called when view disappears
+    func cleanup() async {
+        logger.info("Cleaning up ExpenseDetailViewModel")
+        
+        // Cancel any ongoing operations
+        cancellables.forEach { $0.cancel() }
+        
+        // Clear references to prevent retain cycles
+        lastLoadedExpense = nil
+        recoveryInProgress = false
+        recoveryAttempts = 0
+    }
+    
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()

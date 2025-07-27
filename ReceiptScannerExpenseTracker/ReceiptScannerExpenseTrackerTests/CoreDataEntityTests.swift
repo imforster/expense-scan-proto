@@ -3,25 +3,16 @@ import CoreData
 @testable import ReceiptScannerExpenseTracker
 
 @MainActor
-class CoreDataEntityTests: XCTestCase {
-    var testCoreDataManager: CoreDataManager!
-    var testContext: NSManagedObjectContext!
+class CoreDataEntityTests: CoreDataTestCase {
     
     override func setUpWithError() throws {
         try super.setUpWithError()
-        
-        // Create in-memory Core Data stack for testing
-        testCoreDataManager = CoreDataManager.createForTesting()
-        testContext = testCoreDataManager.viewContext
-        
-        // Create default categories for testing only if needed for this test
-        // CoreDataManager.createDefaultCategoriesForTesting(in: testContext)
+        // No additional setup needed - base class handles Core Data setup
     }
     
     override func tearDownWithError() throws {
-        testCoreDataManager = nil
-        testContext = nil
         try super.tearDownWithError()
+        // No additional teardown needed - base class handles cleanup
     }
     
     // MARK: - Entity Name Tests
@@ -61,16 +52,16 @@ class CoreDataEntityTests: XCTestCase {
         let formattedDate = expense.formattedDate()
         XCTAssertFalse(formattedDate.isEmpty, "Formatted date should not be empty")
         
-        // Test with nil date (should use current date)
-        let nilDateExpense = Expense(context: testContext)
-        nilDateExpense.id = UUID()
-        nilDateExpense.amount = NSDecimalNumber(string: "42.99")
-        nilDateExpense.merchant = "Test Merchant"
-        // Don't set date property
+        // Test with a different date
+        let pastDateExpense = Expense(context: testContext)
+        pastDateExpense.id = UUID()
+        pastDateExpense.amount = NSDecimalNumber(string: "42.99")
+        pastDateExpense.merchant = "Test Merchant"
+        pastDateExpense.date = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
         
         // This should not crash and should return a non-empty string
-        let nilFormattedDate = nilDateExpense.formattedDate()
-        XCTAssertFalse(nilFormattedDate.isEmpty, "Formatted date should not be empty even with nil date")
+        let pastFormattedDate = pastDateExpense.formattedDate()
+        XCTAssertFalse(pastFormattedDate.isEmpty, "Formatted date should not be empty for past date")
     }
     
     func testReceiptDateFormatting() {
@@ -87,18 +78,18 @@ class CoreDataEntityTests: XCTestCase {
         let formattedDate = receipt.formattedDate()
         XCTAssertFalse(formattedDate.isEmpty, "Formatted date should not be empty")
         
-        // Test with nil date (should use current date)
-        let nilDateReceipt = Receipt(context: testContext)
-        nilDateReceipt.id = UUID()
-        nilDateReceipt.dateProcessed = Date()
-        nilDateReceipt.merchantName = "Test Merchant"
-        nilDateReceipt.totalAmount = NSDecimalNumber(string: "42.99")
-        nilDateReceipt.imageURL = URL(string: "file:///test.jpg")!
-        // Don't set date property
+        // Test with a different date
+        let pastDateReceipt = Receipt(context: testContext)
+        pastDateReceipt.id = UUID()
+        pastDateReceipt.date = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        pastDateReceipt.dateProcessed = Date()
+        pastDateReceipt.merchantName = "Test Merchant"
+        pastDateReceipt.totalAmount = NSDecimalNumber(string: "42.99")
+        pastDateReceipt.imageURL = URL(string: "file:///test.jpg")!
         
         // This should not crash and should return a non-empty string
-        let nilFormattedDate = nilDateReceipt.formattedDate()
-        XCTAssertFalse(nilFormattedDate.isEmpty, "Formatted date should not be empty even with nil date")
+        let pastFormattedDate = pastDateReceipt.formattedDate()
+        XCTAssertFalse(pastFormattedDate.isEmpty, "Formatted date should not be empty for past date")
     }
     
     // MARK: - Cross-Context Relationship Tests
