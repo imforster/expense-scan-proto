@@ -142,11 +142,12 @@ struct ExpenseEditView: View {
                 Spacer()
                 
                 if let category = viewModel.selectedCategory {
+                    let categoryColor = Color(hex: category.colorHex) ?? .blue
                     HStack {
                         Image(systemName: category.safeIcon)
-                            .foregroundColor(category.color)
+                            .foregroundColor(categoryColor)
                         Text(category.safeName)
-                            .foregroundColor(category.color)
+                            .foregroundColor(categoryColor)
                     }
                 } else {
                     Text("Select Category")
@@ -170,6 +171,7 @@ struct ExpenseEditView: View {
                             Button(action: {
                                 viewModel.selectedCategory = category
                             }) {
+                                let categoryColor = Color(hex: category.colorHex) ?? .blue
                                 HStack {
                                     Image(systemName: category.safeIcon)
                                         .font(.caption)
@@ -178,8 +180,8 @@ struct ExpenseEditView: View {
                                 }
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(category.color.opacity(0.1))
-                                .foregroundColor(category.color)
+                                .background(categoryColor.opacity(0.1))
+                                .foregroundColor(categoryColor)
                                 .cornerRadius(12)
                             }
                         }
@@ -251,13 +253,14 @@ struct ExpenseEditView: View {
                     }
                     
                     if let category = viewModel.expenseItems[index].category {
+                        let categoryColor = Color(hex: category.colorHex) ?? .blue
                         HStack {
                             Image(systemName: category.safeIcon)
                                 .font(.caption)
-                                .foregroundColor(category.color)
+                                .foregroundColor(categoryColor)
                             Text(category.safeName)
                                 .font(.caption)
-                                .foregroundColor(category.color)
+                                .foregroundColor(categoryColor)
                             Spacer()
                         }
                     }
@@ -494,6 +497,12 @@ struct ExpenseEditView: View {
     private func saveExpense() async {
         do {
             try await viewModel.saveExpense()
+            
+            // Post notification that expense data has changed
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+            }
+            
             dismiss()
         } catch {
             // Error is handled by the view model
@@ -552,9 +561,10 @@ struct CategoryRow: View {
     
     var body: some View {
         Button(action: action) {
+            let categoryColor = Color(hex: category.colorHex) ?? .blue
             HStack {
                 Image(systemName: category.safeIcon)
-                    .foregroundColor(category.color)
+                    .foregroundColor(categoryColor)
                     .frame(width: 24)
                 
                 Text(category.safeName)

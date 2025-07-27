@@ -5,7 +5,26 @@ import CloudKit
 class CoreDataManager: ObservableObject {
     static let shared = CoreDataManager()
     
-    private let container: NSPersistentContainer
+    // Static method for testing
+    static func createForTesting() -> CoreDataManager {
+        let manager = CoreDataManager()
+        
+        // Configure in-memory store for testing
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        manager.container.persistentStoreDescriptions = [description]
+        
+        // Load the persistent store
+        manager.container.loadPersistentStores { (storeDescription, error) in
+            if let error = error as NSError? {
+                fatalError("Unresolved error \(error), \(error.userInfo)")
+            }
+        }
+        
+        return manager
+    }
+    
+    let container: NSPersistentContainer
     
     var viewContext: NSManagedObjectContext {
         return container.viewContext
@@ -43,6 +62,8 @@ class CoreDataManager: ObservableObject {
     }
     
     // MARK: - Helper Methods
+    
+
     
     func save() {
         if viewContext.hasChanges {

@@ -96,7 +96,10 @@ struct ContentView: View {
     // Placeholder views for tabs
     private var homeView: some View {
         VStack {
-            CustomNavigationBar(title: "Dashboard") {
+            CustomNavigationBar(
+                title: "Dashboard",
+                showBackButton: false
+            ) {
                 Button(action: {}) {
                     Image(systemName: "bell")
                         .font(.system(size: 18))
@@ -186,7 +189,7 @@ struct ContentView: View {
     private var scanPlaceholderView: some View {
         NavigationView {
             VStack {
-                CustomNavigationBar(title: "Scan Receipt")
+                CustomNavigationBar(title: "Scan Receipt", showBackButton: false)
                 
                 Spacer()
                 
@@ -212,12 +215,12 @@ struct ContentView: View {
     }
     
     private var expensesPlaceholderView: some View {
-        ExpenseListView(context: viewContext)
+        ExpenseListView()
     }
     
     private var reportsPlaceholderView: some View {
         VStack {
-            CustomNavigationBar(title: "Reports")
+            CustomNavigationBar(title: "Reports", showBackButton: false)
             
             CustomSegmentedControl(
                 selection: .constant(0),
@@ -230,9 +233,7 @@ struct ContentView: View {
             EmptyStateView(
                 title: "Reports Coming Soon",
                 message: "Visualize your spending patterns and track your budget with detailed reports.",
-                systemImage: "chart.bar.fill",
-                actionTitle: nil,
-                action: nil
+                systemImage: "chart.bar.fill"
             )
             
             Spacer()
@@ -242,7 +243,7 @@ struct ContentView: View {
     
     private var settingsPlaceholderView: some View {
         VStack {
-            CustomNavigationBar(title: "Settings")
+            CustomNavigationBar(title: "Settings", showBackButton: false)
             
             List {
                 Section(header: Text("Account")) {

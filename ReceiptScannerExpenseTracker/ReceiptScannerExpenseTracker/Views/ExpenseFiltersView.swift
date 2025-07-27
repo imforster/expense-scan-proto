@@ -387,5 +387,5 @@ struct VendorFilterRow: View {
 }
 
 #Preview {
-    ExpenseFiltersView(viewModel: ExpenseListViewModel(context: PersistenceController.preview.container.viewContext))
+    ExpenseFiltersView(viewModel: ExpenseListViewModel())
 }

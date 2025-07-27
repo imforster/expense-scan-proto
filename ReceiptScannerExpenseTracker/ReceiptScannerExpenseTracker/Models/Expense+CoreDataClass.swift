@@ -1,7 +1,8 @@
 import Foundation
 import CoreData
+import SwiftUI
 
 @objc(ReceiptScannerExpenseTrackerExpense)
 public class Expense: NSManagedObject {
-    // Custom methods can be added here
+    // Note: formattedAmount() and formattedDate() are defined in Expense+CoreDataProperties.swift
 }

@@ -9,12 +9,12 @@ import SwiftUI
 
 @main
 struct ReceiptScannerExpenseTrackerApp: App {
-    let persistenceController = PersistenceController.shared
+    @StateObject private var coreDataManager = CoreDataManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environment(\.managedObjectContext, coreDataManager.viewContext)
         }
     }
 }

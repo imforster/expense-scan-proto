@@ -3,36 +3,23 @@ import CoreData
 @testable import ReceiptScannerExpenseTracker
 
 @MainActor
-class ExpenseContextTests: XCTestCase {
+class ExpenseContextTests: CoreDataTestCase {
     var viewModel: ExpenseEditViewModel!
-    var context: NSManagedObjectContext!
     var mockCategoryService: MockCategoryService!
     
-    override func setUp() {
-        super.setUp()
+    @MainActor
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         
-        // Set up in-memory Core Data stack for testing
-        let persistentContainer = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
-        let description = NSPersistentStoreDescription()
-        description.type = NSInMemoryStoreType
-        persistentContainer.persistentStoreDescriptions = [description]
-        
-        persistentContainer.loadPersistentStores { _, error in
-            if let error = error {
-                fatalError("Failed to load store: \(error)")
-            }
-        }
-        
-        context = persistentContainer.viewContext
         mockCategoryService = MockCategoryService()
-        viewModel = ExpenseEditViewModel(context: context, categoryService: mockCategoryService)
+        viewModel = ExpenseEditViewModel(context: testContext, categoryService: mockCategoryService)
     }
     
-    override func tearDown() {
+    @MainActor
+    override func tearDownWithError() throws {
         viewModel = nil
-        context = nil
         mockCategoryService = nil
-        super.tearDown()
+        try super.tearDownWithError()
     }
     
     // MARK: - Expense Context Tests
@@ -80,7 +67,7 @@ class ExpenseContextTests: XCTestCase {
             
             // Then
             let fetchRequest: NSFetchRequest<Expense> = Expense.fetchRequest()
-            let expenses = try context.fetch(fetchRequest)
+            let expenses = try testContext.fetch(fetchRequest)
             
             XCTAssertEqual(expenses.count, 1)
             let savedExpense = expenses.first!
@@ -97,15 +84,15 @@ class ExpenseContextTests: XCTestCase {
         // Given
         let expense = createTestExpense()
         expense.notes = "Test notes\n\n[Context: Business, Personal]"
-        try! context.save()
+        try! testContext.save()
         
         // When
-        let loadedViewModel = ExpenseEditViewModel(context: context, expense: expense)
+        let loadedViewModel = ExpenseEditViewModel(context: testContext, expense: expense)
         
         // Then
         XCTAssertEqual(loadedViewModel.expenseContexts.count, 2)
-        XCTAssertTrue(loadedViewModel.expenseContexts.contains(.business))
-        XCTAssertTrue(loadedViewModel.expenseContexts.contains(.personal))
+        XCTAssertTrue(loadedViewModel.expenseContexts.contains(ExpenseContext.business))
+        XCTAssertTrue(loadedViewModel.expenseContexts.contains(ExpenseContext.personal))
         XCTAssertEqual(loadedViewModel.notes, "Test notes") // Context tag should be removed from notes
     }
     
@@ -113,13 +100,13 @@ class ExpenseContextTests: XCTestCase {
         // Given
         let expense = createTestExpense()
         expense.notes = "Test notes\n\n[Context: Business]"
-        try! context.save()
+        try! testContext.save()
         
-        let loadedViewModel = ExpenseEditViewModel(context: context, expense: expense)
+        let loadedViewModel = ExpenseEditViewModel(context: testContext, expense: expense)
         
         // When
-        loadedViewModel.toggleExpenseContext(.business) // Remove business
-        loadedViewModel.toggleExpenseContext(.personal) // Add personal
+        loadedViewModel.toggleExpenseContext(ExpenseContext.business) // Remove business
+        loadedViewModel.toggleExpenseContext(ExpenseContext.personal) // Add personal
         
         // Save the updated expense
         do {
@@ -127,7 +114,7 @@ class ExpenseContextTests: XCTestCase {
             
             // Then
             let fetchRequest: NSFetchRequest<Expense> = Expense.fetchRequest()
-            let expenses = try context.fetch(fetchRequest)
+            let expenses = try testContext.fetch(fetchRequest)
             
             XCTAssertEqual(expenses.count, 1)
             let savedExpense = expenses.first!
@@ -144,7 +131,7 @@ class ExpenseContextTests: XCTestCase {
     // MARK: - Helper Methods
     
     private func createTestExpense() -> Expense {
-        let expense = Expense(context: context)
+        let expense = Expense(context: testContext)
         expense.id = UUID()
         expense.amount = NSDecimalNumber(string: "42.99")
         expense.date = Date()
