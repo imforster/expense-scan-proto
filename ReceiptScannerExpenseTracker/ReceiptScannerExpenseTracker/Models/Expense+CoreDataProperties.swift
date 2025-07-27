@@ -29,11 +29,7 @@ extension Expense {
     func formattedDate() -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        if let safeDate = date as Date? {
-            return formatter.string(from: safeDate)
-        } else {
-            return formatter.string(from: Date())
-        }
+        return formatter.string(from: date)
     }
 }
 

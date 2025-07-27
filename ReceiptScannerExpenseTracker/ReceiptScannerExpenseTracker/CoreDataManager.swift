@@ -24,7 +24,7 @@ class CoreDataManager: ObservableObject {
         return manager
     }
     
-    private let container: NSPersistentContainer
+    let container: NSPersistentContainer
     
     var viewContext: NSManagedObjectContext {
         return container.viewContext
