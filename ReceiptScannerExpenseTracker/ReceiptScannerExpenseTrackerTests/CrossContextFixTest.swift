@@ -3,26 +3,15 @@ import CoreData
 @testable import ReceiptScannerExpenseTracker
 
 @MainActor
-class CrossContextFixTest: XCTestCase {
+class CrossContextFixTest: CoreDataTestCase {
     
     func testCrossContextCategoryFix() {
         // This test verifies that our fix for cross-context relationships works correctly
         
         // 1. Create two separate contexts with the same persistent store coordinator
-        let container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
-        let description = NSPersistentStoreDescription()
-        description.type = NSInMemoryStoreType
-        container.persistentStoreDescriptions = [description]
-        
-        container.loadPersistentStores { _, error in
-            if let error = error {
-                XCTFail("Failed to load store: \(error)")
-            }
-        }
-        
-        let context1 = container.viewContext
+        let context1 = testContext
         let context2 = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        context2.persistentStoreCoordinator = container.persistentStoreCoordinator
+        context2.persistentStoreCoordinator = testCoreDataManager.container.persistentStoreCoordinator
         
         // 2. Create a category in context1
         let category = ReceiptScannerExpenseTracker.Category(context: context1)

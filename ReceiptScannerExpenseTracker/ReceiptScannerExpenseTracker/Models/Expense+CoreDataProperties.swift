@@ -20,19 +20,35 @@ extension Expense {
     
     // Convenience methods
     func formattedAmount() -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD" // This should be configurable in a real app
-        return formatter.string(from: amount) ?? "$0.00"
+        // Safety check for deleted or invalid objects
+        guard !isDeleted, managedObjectContext != nil else {
+            return "$0.00"
+        }
+        
+        do {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.currencyCode = "USD" // This should be configurable in a real app
+            return formatter.string(from: amount) ?? "$0.00"
+        } catch {
+            // Fallback if amount property is inaccessible
+            return "$0.00"
+        }
     }
     
     func formattedDate() -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        if let safeDate = date as Date? {
-            return formatter.string(from: safeDate)
-        } else {
-            return formatter.string(from: Date())
+        // Safety check for deleted or invalid objects
+        guard !isDeleted, managedObjectContext != nil else {
+            return "Invalid Date"
+        }
+        
+        do {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
+        } catch {
+            // Fallback if date property is inaccessible
+            return "Invalid Date"
         }
     }
 }

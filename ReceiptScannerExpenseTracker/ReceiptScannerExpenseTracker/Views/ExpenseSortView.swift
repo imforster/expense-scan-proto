@@ -26,7 +26,7 @@ struct ExpenseSortView: View {
                 // Sort Options
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(ExpenseListViewModel.SortOption.allCases, id: \.self) { sortOption in
+                        ForEach(ExpenseSortService.SortOption.allCases, id: \.self) { sortOption in
                             SortOptionRow(
                                 sortOption: sortOption,
                                 isSelected: viewModel.sortOption == sortOption
@@ -35,7 +35,7 @@ struct ExpenseSortView: View {
                                 dismiss()
                             }
                             
-                            if sortOption != ExpenseListViewModel.SortOption.allCases.last {
+                            if sortOption != ExpenseSortService.SortOption.allCases.last {
                                 Divider()
                                     .padding(.leading, 60)
                             }
@@ -53,7 +53,7 @@ struct ExpenseSortView: View {
 }
 
 struct SortOptionRow: View {
-    let sortOption: ExpenseListViewModel.SortOption
+    let sortOption: ExpenseSortService.SortOption
     let isSelected: Bool
     let action: () -> Void
     
@@ -61,14 +61,14 @@ struct SortOptionRow: View {
         Button(action: action) {
             HStack(spacing: 16) {
                 // Icon
-                Image(systemName: sortOption.systemImage)
+                Image(systemName: sortOption.iconName)
                     .font(.system(size: 20))
                     .foregroundColor(isSelected ? AppTheme.primaryColor : .gray)
                     .frame(width: 24, height: 24)
                 
                 // Title and description
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(sortOption.rawValue)
+                    Text(sortOption.displayName)
                         .font(.body)
                         .foregroundColor(.primary)
                     
@@ -97,7 +97,7 @@ struct SortOptionRow: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
     }
     
-    private func sortDescription(for sortOption: ExpenseListViewModel.SortOption) -> String {
+    private func sortDescription(for sortOption: ExpenseSortService.SortOption) -> String {
         switch sortOption {
         case .dateAscending:
             return "Show oldest expenses first"
@@ -111,10 +111,22 @@ struct SortOptionRow: View {
             return "Sort merchants alphabetically A-Z"
         case .merchantDescending:
             return "Sort merchants alphabetically Z-A"
+        case .categoryAscending:
+            return "Sort categories alphabetically A-Z"
+        case .categoryDescending:
+            return "Sort categories alphabetically Z-A"
+        case .paymentMethodAscending:
+            return "Sort payment methods alphabetically A-Z"
+        case .paymentMethodDescending:
+            return "Sort payment methods alphabetically Z-A"
+        case .recurringFirst:
+            return "Show recurring expenses first"
+        case .nonRecurringFirst:
+            return "Show non-recurring expenses first"
         }
     }
 }
 
 #Preview {
-    ExpenseSortView(viewModel: ExpenseListViewModel(context: PersistenceController.preview.container.viewContext))
+    ExpenseSortView(viewModel: ExpenseListViewModel())
 }

@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Code Examples & Documentation Helper",
+  "description": "Triggers when the user requests code examples, setup or configuration steps, or library/API documentation to provide helpful implementation guidance",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.swift",
+      "*.md",
+      "*.json",
+      "*.plist",
+      "*.xcconfig",
+      "*.pbxproj"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The user is requesting code examples, setup/configuration steps, or library/API documentation. Based on the current project context and files, provide:\n\n1. Relevant code examples that demonstrate the requested functionality\n2. Step-by-step setup or configuration instructions\n3. API/library documentation with usage examples\n4. Best practices and common patterns for the technology stack\n5. Any relevant project-specific considerations\n\nFocus on practical, working examples that the user can immediately apply to their project. Include explanations of key concepts and potential gotchas."
+  }
+}

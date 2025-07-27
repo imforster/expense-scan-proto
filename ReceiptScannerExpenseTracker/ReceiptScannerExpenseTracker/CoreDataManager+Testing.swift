@@ -3,42 +3,7 @@ import CoreData
 
 // Create a test helper extension for CoreDataManager
 extension CoreDataManager {
-    // Create a test instance of CoreDataManager with in-memory store
-    static func createForTesting() -> CoreDataManager {
-        // Use the shared instance since we can't create a new one (init is private)
-        let manager = CoreDataManager.shared
-        
-        // Configure the persistent container to use an in-memory store
-        let description = NSPersistentStoreDescription()
-        description.url = URL(fileURLWithPath: "/dev/null")
-        description.type = NSInMemoryStoreType
-        
-        // Use the setPersistentStoreDescriptions method
-        manager.setPersistentStoreDescriptions([description])
-        
-        // Reset any existing data in the context
-        let context = manager.viewContext
-        let entities = manager.viewContext.persistentStoreCoordinator?.managedObjectModel.entities ?? []
-        
-        for entity in entities {
-            guard let entityName = entity.name else { continue }
-            
-            let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
-            let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-            
-            do {
-                try context.execute(deleteRequest)
-                try context.save()
-            } catch {
-                print("Error resetting test data: \(error)")
-            }
-        }
-        
-        // Note: We're not creating default categories here to avoid conflicts with test cases
-        // that create their own categories
-        
-        return manager
-    }
+
     
     // Helper method to create default categories for testing
     static func createDefaultCategoriesForTesting(in context: NSManagedObjectContext) {

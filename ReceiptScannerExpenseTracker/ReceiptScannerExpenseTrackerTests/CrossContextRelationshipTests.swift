@@ -3,40 +3,30 @@ import CoreData
 @testable import ReceiptScannerExpenseTracker
 
 @MainActor
-class CrossContextRelationshipTests: XCTestCase {
+class CrossContextRelationshipTests: CoreDataTestCase {
     var mainContext: NSManagedObjectContext!
     var secondaryContext: NSManagedObjectContext!
     var viewModel: ExpenseEditViewModel!
     
-    override func setUp() {
-        super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         
-        // Set up in-memory Core Data stack for testing
-        let persistentContainer = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
-        let description = NSPersistentStoreDescription()
-        description.type = NSInMemoryStoreType
-        persistentContainer.persistentStoreDescriptions = [description]
+        // Use the shared test Core Data manager
+        mainContext = testContext
         
-        persistentContainer.loadPersistentStores { _, error in
-            if let error = error {
-                fatalError("Failed to load store: \(error)")
-            }
-        }
-        
-        // Create two separate contexts that share the same persistent store
-        mainContext = persistentContainer.viewContext
+        // Create a secondary context that shares the same persistent store coordinator
         secondaryContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        secondaryContext.persistentStoreCoordinator = persistentContainer.persistentStoreCoordinator
+        secondaryContext.persistentStoreCoordinator = testCoreDataManager.container.persistentStoreCoordinator
         
         // Initialize view model with the main context
         viewModel = ExpenseEditViewModel(context: mainContext)
     }
     
-    override func tearDown() {
+    override func tearDownWithError() throws {
         viewModel = nil
         mainContext = nil
         secondaryContext = nil
-        super.tearDown()
+        try super.tearDownWithError()
     }
     
     // MARK: - Cross-Context Relationship Tests

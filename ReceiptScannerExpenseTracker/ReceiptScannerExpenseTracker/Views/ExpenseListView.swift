@@ -1,17 +1,21 @@
 import SwiftUI
 import CoreData
 
+// Ensure we're using the SearchBar from CustomNavigation.swift
+typealias SearchBarView = SearchBar
+
 struct ExpenseListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: ExpenseListViewModel
     @State private var showingFilters = false
     @State private var showingSortOptions = false
     @State private var selectedExpense: Expense?
-    @State private var showingExpenseDetail = false
     @State private var showingAddExpense = false
     
-    init(context: NSManagedObjectContext) {
-        self._viewModel = StateObject(wrappedValue: ExpenseListViewModel(context: context))
+    init() {
+        // Ensure ExpenseListViewModel uses the same context as the view
+        let dataService = ExpenseDataService(context: CoreDataManager.shared.viewContext)
+        self._viewModel = StateObject(wrappedValue: ExpenseListViewModel(dataService: dataService))
     }
     
     var body: some View {
@@ -58,7 +62,7 @@ struct ExpenseListView: View {
             }
             
             // Search Bar
-            SearchBar(text: $viewModel.searchText, placeholder: "Search expenses, merchants, or notes")
+            SearchBarView(text: $viewModel.searchText, placeholder: "Search expenses, merchants, or notes")
                 .padding(.top, 8)
             
             // Active Filters Summary
@@ -85,13 +89,17 @@ struct ExpenseListView: View {
             // Content
             if viewModel.isLoading {
                 LoadingView(message: "Loading expenses...")
-            } else if let errorMessage = viewModel.errorMessage {
+            } else if let error = viewModel.currentError {
                 ErrorView(
                     title: "Error Loading Expenses",
-                    message: errorMessage,
-                    retryAction: { viewModel.loadExpenses() }
+                    message: error.localizedDescription,
+                    retryAction: { 
+                        Task {
+                            await viewModel.retryLastOperation()
+                        }
+                    }
                 )
-            } else if viewModel.filteredExpenses.isEmpty {
+            } else if viewModel.displayedExpenses.isEmpty {
                 emptyStateView
             } else {
                 expenseListContent
@@ -104,19 +112,29 @@ struct ExpenseListView: View {
         .sheet(isPresented: $showingSortOptions) {
             ExpenseSortView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingExpenseDetail) {
-            if let expense = selectedExpense {
+        .sheet(item: $selectedExpense) { expense in
+            NavigationView {
                 ExpenseDetailView(expense: expense)
+                    .environment(\.managedObjectContext, viewContext)
             }
         }
         .sheet(isPresented: $showingAddExpense) {
-            ExpenseEditView(context: viewContext)
+            ExpenseEditView(context: CoreDataManager.shared.viewContext)
                 .onDisappear {
-                    viewModel.loadExpenses()
+                    Task {
+                        await viewModel.refreshExpenses()
+                    }
                 }
         }
         .onAppear {
-            viewModel.loadExpenses()
+            Task {
+                await viewModel.loadExpenses()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .expenseDataChanged)) { _ in
+            Task {
+                await viewModel.refreshExpenses()
+            }
         }
     }
     
@@ -137,10 +155,9 @@ struct ExpenseListView: View {
     private var expenseListContent: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
-                ForEach(viewModel.filteredExpenses, id: \.id) { expense in
+                ForEach(viewModel.displayedExpenses, id: \.id) { expense in
                     ExpenseRowView(expense: expense) {
                         selectedExpense = expense
-                        showingExpenseDetail = true
                     }
                     .padding(.horizontal)
                 }
@@ -257,7 +274,7 @@ struct ExpenseRowView: View {
 #if DEBUG
 struct ExpenseListView_Previews: PreviewProvider {
     static var previews: some View {
-        ExpenseListView(context: PersistenceController.preview.container.viewContext)
+        ExpenseListView()
     }
 }
 #endif
