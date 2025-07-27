@@ -10,7 +10,6 @@ struct ExpenseListView: View {
     @State private var showingFilters = false
     @State private var showingSortOptions = false
     @State private var selectedExpense: Expense?
-    @State private var showingExpenseDetail = false
     @State private var showingAddExpense = false
     
     init() {
@@ -113,14 +112,10 @@ struct ExpenseListView: View {
         .sheet(isPresented: $showingSortOptions) {
             ExpenseSortView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingExpenseDetail, onDismiss: {
-            // Clear the selected expense when the sheet is dismissed
-            selectedExpense = nil
-        }) {
-            if let expense = selectedExpense {
-                NavigationView {
-                    ExpenseDetailView(expense: expense)
-                }
+        .sheet(item: $selectedExpense) { expense in
+            NavigationView {
+                ExpenseDetailView(expense: expense)
+                    .environment(\.managedObjectContext, viewContext)
             }
         }
         .sheet(isPresented: $showingAddExpense) {
@@ -163,7 +158,6 @@ struct ExpenseListView: View {
                 ForEach(viewModel.displayedExpenses, id: \.id) { expense in
                     ExpenseRowView(expense: expense) {
                         selectedExpense = expense
-                        showingExpenseDetail = true
                     }
                     .padding(.horizontal)
                 }

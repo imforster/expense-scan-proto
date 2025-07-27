@@ -9,7 +9,7 @@ struct ExpenseDetailView: View {
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var isDeleting = false
-    @State private var isDataLoaded = false
+
     
     var body: some View {
         ZStack {
@@ -17,8 +17,6 @@ struct ExpenseDetailView: View {
             
             if expense.isDeleted {
                 deletedView
-            } else if !isDataLoaded {
-                loadingView
             } else {
                 expenseDetailContent
             }
@@ -34,9 +32,6 @@ struct ExpenseDetailView: View {
             deleteAlert
         } message: {
             Text("Are you sure you want to delete this expense? This action cannot be undone.")
-        }
-        .onAppear {
-            refreshExpenseData()
         }
     }
     
@@ -126,12 +121,15 @@ struct ExpenseDetailView: View {
         }
     }
     
-    private func refreshExpenseData() {
+    @MainActor
+    private func refreshExpenseDataAsync() async {
         // Ensure the expense object is not a fault and relationships are loaded
         guard !expense.isDeleted, let context = expense.managedObjectContext else { 
-            isDataLoaded = true
             return 
         }
+        
+        // Small delay to ensure the view is ready
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
         
         // Refresh the object to ensure it's up to date
         context.refresh(expense, mergeChanges: true)
@@ -141,11 +139,6 @@ struct ExpenseDetailView: View {
         _ = expense.receipt
         _ = expense.items
         _ = expense.tags
-        
-        // Small delay to ensure UI updates properly
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isDataLoaded = true
-        }
     }
     
     // MARK: - Expense Detail Content
@@ -459,4 +452,137 @@ extension Color {
         
         self.init(.sRGB, red: red, green: green, blue: blue, opacity: 1)
     }
+}
+
+// MARK: - SwiftUI Previews
+
+#Preview("ExpenseDetailView - Debug") {
+    // Create an in-memory Core Data stack for preview
+    let container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
+    container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
+    
+    container.loadPersistentStores { _, error in
+        if let error = error {
+            print("Preview Core Data error: \(error)")
+        }
+    }
+    
+    let context = container.viewContext
+    
+    // Create a sample category
+    let category = Category(context: context)
+    category.id = UUID()
+    category.name = "Food"
+    category.colorHex = "FF6B6B"
+    category.icon = "fork.knife"
+    
+    // Create a sample expense with all properties
+    let expense = Expense(context: context)
+    expense.id = UUID()
+    expense.amount = NSDecimalNumber(string: "42.99")
+    expense.date = Date()
+    expense.merchant = "Sample Restaurant"
+    expense.notes = "Lunch with team"
+    expense.paymentMethod = "Credit Card"
+    expense.isRecurring = false
+    expense.category = category
+    
+    // Create sample expense items
+    let item1 = ExpenseItem(context: context)
+    item1.id = UUID()
+    item1.name = "Burger"
+    item1.amount = NSDecimalNumber(string: "15.99")
+    item1.quantity = 1
+    
+    let item2 = ExpenseItem(context: context)
+    item2.id = UUID()
+    item2.name = "Fries"
+    item2.amount = NSDecimalNumber(string: "8.99")
+    item2.quantity = 2
+    
+    expense.addToItems(item1)
+    expense.addToItems(item2)
+    
+    // Create sample tags
+    let tag1 = Tag(context: context)
+    tag1.id = UUID()
+    tag1.name = "Business"
+    
+    let tag2 = Tag(context: context)
+    tag2.id = UUID()
+    tag2.name = "Team"
+    
+    expense.addToTags(tag1)
+    expense.addToTags(tag2)
+    
+    // Save the context
+    try? context.save()
+    
+    // Debug: Print expense properties to console
+    print("=== PREVIEW DEBUG INFO ===")
+    print("Expense ID: \(expense.id)")
+    print("Expense amount: \(expense.amount)")
+    print("Expense merchant: \(expense.merchant)")
+    print("Expense date: \(expense.date)")
+    print("Expense isDeleted: \(expense.isDeleted)")
+    print("Expense managedObjectContext: \(expense.managedObjectContext != nil ? "Present" : "Missing")")
+    print("Expense isFault: \(expense.isFault)")
+    print("Expense category: \(expense.category?.name ?? "nil")")
+    print("Expense items count: \(expense.items?.count ?? 0)")
+    print("Expense tags count: \(expense.tags?.count ?? 0)")
+    print("formattedAmount(): \(expense.formattedAmount())")
+    print("formattedDate(): \(expense.formattedDate())")
+    print("safeMerchant: \(expense.safeMerchant)")
+    print("=========================")
+    
+    return NavigationView {
+        ExpenseDetailView(expense: expense)
+            .environment(\.managedObjectContext, context)
+    }
+}
+
+#Preview("ExpenseDetailView - Minimal") {
+    // Minimal preview to test basic functionality
+    let container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
+    container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
+    
+    container.loadPersistentStores { _, _ in }
+    let context = container.viewContext
+    
+    let expense = Expense(context: context)
+    expense.id = UUID()
+    expense.amount = NSDecimalNumber(string: "25.50")
+    expense.date = Date()
+    expense.merchant = "Test Merchant"
+    expense.notes = "Test notes"
+    expense.paymentMethod = "Cash"
+    expense.isRecurring = false
+    
+    try? context.save()
+    
+    return ExpenseDetailView(expense: expense)
+        .environment(\.managedObjectContext, context)
+}
+
+#Preview("ExpenseDetailView - Empty Data") {
+    // Test with minimal/empty data to see what breaks
+    let container = NSPersistentContainer(name: "ReceiptScannerExpenseTracker")
+    container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
+    
+    container.loadPersistentStores { _, _ in }
+    let context = container.viewContext
+    
+    let expense = Expense(context: context)
+    expense.id = UUID()
+    expense.amount = NSDecimalNumber(string: "0.00")
+    expense.date = Date()
+    expense.merchant = ""
+    expense.notes = nil
+    expense.paymentMethod = nil
+    expense.isRecurring = false
+    
+    try? context.save()
+    
+    return ExpenseDetailView(expense: expense)
+        .environment(\.managedObjectContext, context)
 }
