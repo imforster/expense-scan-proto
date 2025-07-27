@@ -88,6 +88,8 @@ class ExpenseSortService {
     
     private let logger = Logger(subsystem: "com.receiptscanner.expensetracker", category: "ExpenseSortService")
     private let asyncSortThreshold = 100 // Use async sorting for datasets larger than this
+    private var lastSortTime: Date = Date.distantPast
+    private var invalidExpenseCount = 0
     
     // MARK: - Public Methods
     
@@ -198,46 +200,93 @@ class ExpenseSortService {
     
     /// Performs the actual sorting with error handling
     private func performSort(_ expenses: [Expense], by option: SortOption) throws -> [Expense] {
+        let currentTime = Date()
+        let timeSinceLastSort = currentTime.timeIntervalSince(lastSortTime)
+        lastSortTime = currentTime
         
-        // Filter out any invalid or deleted expenses before sorting with comprehensive checks
+        // Reset invalid count periodically to avoid log spam
+        if timeSinceLastSort > 5.0 {
+            invalidExpenseCount = 0
+        }
+        
+        // Filter out any invalid or deleted expenses before sorting with enhanced validation
+        var localInvalidCount = 0
         let validExpenses = expenses.compactMap { expense -> Expense? in
             // Check if the expense object itself is valid
             guard !expense.isDeleted else {
-                logger.warning("Expense object is deleted")
+                localInvalidCount += 1
                 return nil
             }
             
             // Check if the managed object context is valid
             guard let context = expense.managedObjectContext else {
-                logger.warning("Expense object has no managed object context")
+                localInvalidCount += 1
                 return nil
             }
             
-            // Check if the context itself is still valid (not deallocated)
-            // Note: NSManagedObjectContext doesn't have isDeleted property, but we can check if it's still accessible
+            // Enhanced fault checking - if object is a fault, ensure it can be accessed
+            if expense.isFault {
+                do {
+                    // Try to refresh the object to ensure it's accessible
+                    context.refresh(expense, mergeChanges: true)
+                    
+                    // Check again if it's still valid after refresh
+                    if expense.isDeleted {
+                        localInvalidCount += 1
+                        return nil
+                    }
+                } catch {
+                    localInvalidCount += 1
+                    return nil
+                }
+            }
             
-            // Additional safety check: try to access a basic property to ensure object is accessible
+            // Comprehensive property accessibility test
             do {
                 _ = expense.objectID
-                _ = expense.date // This will throw if the object is inaccessible
+                _ = expense.date
+                _ = expense.merchant
+                _ = expense.amount
+                
+                // Test relationship access safely
+                if let category = expense.category {
+                    _ = category.name
+                }
+                
                 return expense
             } catch {
-                logger.warning("Expense object is inaccessible: \(error.localizedDescription)")
+                localInvalidCount += 1
                 return nil
+            }
+        }
+        
+        // Only log if we have invalid expenses and haven't logged recently
+        if localInvalidCount > 0 {
+            self.invalidExpenseCount += localInvalidCount
+            if timeSinceLastSort > 2.0 || self.invalidExpenseCount > 10 {
+                logger.warning("Filtered out \(self.invalidExpenseCount) invalid expenses during sort operations")
+                self.invalidExpenseCount = 0
             }
         }
         
         guard !validExpenses.isEmpty else {
-            logger.warning("No valid expenses to sort after filtering")
+            if timeSinceLastSort > 2.0 {
+                logger.warning("No valid expenses to sort after filtering")
+            }
             return []
         }
         
         // Perform sorting with enhanced error handling
-        return validExpenses.sorted { expense1, expense2 in
+        var comparisonErrors = 0
+        let sortedExpenses = validExpenses.sorted { expense1, expense2 in
             // Double-check validity before comparison
             guard !expense1.isDeleted && !expense2.isDeleted,
                   expense1.managedObjectContext != nil && expense2.managedObjectContext != nil else {
-                logger.warning("Invalid expense objects detected during comparison")
+                // Only log occasionally to avoid spam
+                if comparisonErrors == 0 {
+                    logger.warning("Invalid expense objects detected during comparison")
+                }
+                comparisonErrors += 1
                 // Fallback to object ID comparison for stability
                 return expense1.objectID.description < expense2.objectID.description
             }
@@ -245,8 +294,11 @@ class ExpenseSortService {
             do {
                 return try compareExpenses(expense1, expense2, using: option)
             } catch {
-                // Log the error but continue with a fallback comparison
-                logger.error("Comparison failed: \(error.localizedDescription), using fallback")
+                // Only log the first few errors to avoid spam
+                if comparisonErrors < 3 {
+                    logger.error("Comparison failed: \(error.localizedDescription), using fallback")
+                }
+                comparisonErrors += 1
                 
                 // Safe fallback comparison with additional checks
                 do {
@@ -255,17 +307,26 @@ class ExpenseSortService {
                     let date2 = expense2.date
                     return date1 < date2
                 } catch {
-                    logger.error("Date comparison failed, using object ID comparison")
+                    if comparisonErrors < 3 {
+                        logger.error("Date comparison failed, using object ID comparison")
+                    }
                     // Ultimate fallback: compare object IDs
                     return expense1.objectID.description < expense2.objectID.description
                 }
             }
         }
+        
+        // Log summary if there were errors
+        if comparisonErrors > 0 && timeSinceLastSort > 2.0 {
+            logger.warning("Sort completed with \(comparisonErrors) comparison errors")
+        }
+        
+        return sortedExpenses
     }
     
     /// Performs multi-level sorting with primary and secondary criteria
     private func performMultiLevelSort(_ expenses: [Expense], primary: SortOption, secondary: SortOption) throws -> [Expense] {
-        // First filter out invalid expenses using the same logic as performSort
+        // First filter out invalid expenses using enhanced validation logic
         let validExpenses = expenses.compactMap { expense -> Expense? in
             guard !expense.isDeleted,
                   let context = expense.managedObjectContext else {
@@ -273,10 +334,32 @@ class ExpenseSortService {
                 return nil
             }
             
-            // Test accessibility
+            // Enhanced fault checking for multi-level sort
+            if expense.isFault {
+                do {
+                    context.refresh(expense, mergeChanges: true)
+                    if expense.isDeleted {
+                        logger.warning("Expense object was deleted after refresh in multi-level sort")
+                        return nil
+                    }
+                } catch {
+                    logger.warning("Failed to refresh faulted expense in multi-level sort: \(error.localizedDescription)")
+                    return nil
+                }
+            }
+            
+            // Comprehensive accessibility test for multi-level sort
             do {
                 _ = expense.objectID
                 _ = expense.date
+                _ = expense.merchant
+                _ = expense.amount
+                
+                // Test relationship access safely
+                if let category = expense.category {
+                    _ = category.name
+                }
+                
                 return expense
             } catch {
                 logger.warning("Expense object is inaccessible in multi-level sort: \(error.localizedDescription)")
@@ -322,7 +405,7 @@ class ExpenseSortService {
     
     /// Compares two expenses using the specified sort option
     private func compareExpenses(_ expense1: Expense, _ expense2: Expense, using option: SortOption) throws -> Bool {
-        // Safety check: ensure objects are valid and not deleted
+        // Enhanced safety check: ensure objects are valid and not deleted
         guard let context1 = expense1.managedObjectContext, !expense1.isDeleted else {
             logger.warning("Expense1 object is deleted or has no context")
             throw NSError(domain: "ExpenseSortService", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Cannot compare deleted expense objects"])
@@ -331,6 +414,29 @@ class ExpenseSortService {
         guard let context2 = expense2.managedObjectContext, !expense2.isDeleted else {
             logger.warning("Expense2 object is deleted or has no context")
             throw NSError(domain: "ExpenseSortService", code: 1002, userInfo: [NSLocalizedDescriptionKey: "Cannot compare deleted expense objects"])
+        }
+        
+        // Additional fault checking during comparison
+        if expense1.isFault {
+            do {
+                context1.refresh(expense1, mergeChanges: true)
+                if expense1.isDeleted {
+                    throw NSError(domain: "ExpenseSortService", code: 1003, userInfo: [NSLocalizedDescriptionKey: "Expense1 became deleted after refresh"])
+                }
+            } catch {
+                throw NSError(domain: "ExpenseSortService", code: 1004, userInfo: [NSLocalizedDescriptionKey: "Failed to refresh expense1: \(error.localizedDescription)"])
+            }
+        }
+        
+        if expense2.isFault {
+            do {
+                context2.refresh(expense2, mergeChanges: true)
+                if expense2.isDeleted {
+                    throw NSError(domain: "ExpenseSortService", code: 1005, userInfo: [NSLocalizedDescriptionKey: "Expense2 became deleted after refresh"])
+                }
+            } catch {
+                throw NSError(domain: "ExpenseSortService", code: 1006, userInfo: [NSLocalizedDescriptionKey: "Failed to refresh expense2: \(error.localizedDescription)"])
+            }
         }
         
         switch option {
@@ -405,11 +511,39 @@ class ExpenseSortService {
     
     /// Checks if two expenses are equal for the given sort option
     private func isEqual(_ expense1: Expense, _ expense2: Expense, using option: SortOption) -> Bool {
-        // Safety check: ensure objects are valid
+        // Enhanced safety check: ensure objects are valid
         guard !expense1.isDeleted && !expense2.isDeleted,
-              expense1.managedObjectContext != nil && expense2.managedObjectContext != nil else {
+              let context1 = expense1.managedObjectContext,
+              let context2 = expense2.managedObjectContext else {
             logger.warning("Attempting to compare invalid expense objects in isEqual")
             return false
+        }
+        
+        // Handle faulted objects in equality check
+        if expense1.isFault {
+            do {
+                context1.refresh(expense1, mergeChanges: true)
+                if expense1.isDeleted {
+                    logger.warning("Expense1 became deleted during equality check")
+                    return false
+                }
+            } catch {
+                logger.warning("Failed to refresh expense1 in equality check: \(error.localizedDescription)")
+                return false
+            }
+        }
+        
+        if expense2.isFault {
+            do {
+                context2.refresh(expense2, mergeChanges: true)
+                if expense2.isDeleted {
+                    logger.warning("Expense2 became deleted during equality check")
+                    return false
+                }
+            } catch {
+                logger.warning("Failed to refresh expense2 in equality check: \(error.localizedDescription)")
+                return false
+            }
         }
         
         switch option {

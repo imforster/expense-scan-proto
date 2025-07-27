@@ -51,6 +51,9 @@ class ExpenseListViewModel: ObservableObject {
     private let filterService: ExpenseFilterService
     private let sortService: ExpenseSortService
     private var cancellables = Set<AnyCancellable>()
+    private var lastCoreDataChangeTime: Date = Date.distantPast
+    private var sortDebounceTask: Task<Void, Never>?
+    private let changeDebounceInterval: TimeInterval = 0.2 // 200ms debounce
 
     // MARK: - Initialization
     
@@ -75,6 +78,7 @@ class ExpenseListViewModel: ObservableObject {
         dataService.$expenses
             .receive(on: DispatchQueue.main)
             .sink { [weak self] expenses in
+                self?.lastCoreDataChangeTime = Date()
                 self?.handleExpensesUpdate(expenses)
             }
             .store(in: &cancellables)
@@ -90,6 +94,14 @@ class ExpenseListViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] error in
                 self?.handleErrorStateChange(error)
+            }
+            .store(in: &cancellables)
+        
+        // Listen for Core Data save notifications to track changes
+        NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.lastCoreDataChangeTime = Date()
             }
             .store(in: &cancellables)
     }
@@ -203,32 +215,63 @@ class ExpenseListViewModel: ObservableObject {
         }
     }
     
-    /// Applies filters and sorting using the services
+    /// Applies filters and sorting using the services with debouncing
     private func applyFiltersAndSort(to expenses: [Expense]) async {
-        guard !expenses.isEmpty else {
-            await MainActor.run {
-                self.displayedExpenses = []
-                self.viewState = .empty
-            }
-            return
-        }
+        // Cancel any existing sort operation
+        sortDebounceTask?.cancel()
         
-        // Apply filtering
-        let filteredExpenses = filterService.filter(expenses, with: filterCriteria)
-        
-        // Apply sorting
-        let sortedExpenses = await sortService.sortAsync(filteredExpenses, by: sortOption)
-        
-        await MainActor.run {
-            self.displayedExpenses = sortedExpenses
+        sortDebounceTask = Task {
+            // Debounce rapid successive calls
+            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms debounce
             
-            if sortedExpenses.isEmpty && !filterCriteria.isEmpty {
-                // No results after filtering
-                self.viewState = .empty
-            } else {
-                self.viewState = .loaded(sortedExpenses)
+            guard !Task.isCancelled else { return }
+            
+            guard !expenses.isEmpty else {
+                await MainActor.run {
+                    self.displayedExpenses = []
+                    self.viewState = .empty
+                }
+                return
+            }
+            
+            // Add defensive delay if Core Data changes occurred recently
+            let timeSinceLastChange = Date().timeIntervalSince(lastCoreDataChangeTime)
+            if timeSinceLastChange < changeDebounceInterval {
+                let delayNanoseconds = UInt64((changeDebounceInterval - timeSinceLastChange) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: delayNanoseconds)
+            }
+            
+            guard !Task.isCancelled else { return }
+            
+            // Apply filtering
+            let filteredExpenses = filterService.filter(expenses, with: filterCriteria)
+            
+            guard !Task.isCancelled else { return }
+            
+            // Apply sorting with enhanced error handling
+            let sortedExpenses = await sortService.sortAsync(filteredExpenses, by: sortOption)
+            
+            guard !Task.isCancelled else { return }
+            
+            await MainActor.run {
+                self.displayedExpenses = sortedExpenses
+                
+                if sortedExpenses.isEmpty && !filterCriteria.isEmpty {
+                    // No results after filtering
+                    self.viewState = .empty
+                } else {
+                    self.viewState = .loaded(sortedExpenses)
+                }
             }
         }
+        
+        await sortDebounceTask?.value
+    }
+    
+    /// Checks if Core Data changes occurred recently
+    private func hasRecentCoreDataChanges() -> Bool {
+        let timeSinceLastChange = Date().timeIntervalSince(lastCoreDataChangeTime)
+        return timeSinceLastChange < changeDebounceInterval
     }
 
     // MARK: - Filter Management
