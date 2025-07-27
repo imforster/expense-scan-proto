@@ -3,7 +3,7 @@ import SwiftUI
 import CoreData
 
 // MARK: - Expense Extensions for Safe Data Handling
-extension Expense {
+extension Expense: Identifiable {
     
     // MARK: - Safe Property Access
     
