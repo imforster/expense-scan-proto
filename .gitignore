@@ -1,0 +1,64 @@
+# Xcode
+.DS_Store
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/xcshareddata/
+*.build/
+build/
+DerivedData/
+*.xcarchive/
+*.ipa
+*.app/
+*.dSYM/
+*.o
+*.lo
+*.la
+*.so
+*.dylib
+*.a
+*.bak
+*.swp
+*.swo
+*.xcscheme
+*.xcuserstate
+
+# Swift Package Manager
+.swiftpm/
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# Carthage (if used)
+Carthage/
+*.xcframework/
+
+# SwiftLint (if used)
+.swiftlint.yml
+
+# Fastlane (if used)
+fastlane/report.xml
+fastlane/screenshots/
+fastlane/test_output/
+
+# Other
+.bundle/
+.localized/
+.idea/
+.vscode/
+*.log
+*.temp
+*.tmp
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.dmg
+*.iso
+*.vmdk
+*.ova
+*.vmwarevm/
+*.parallelsvm/
+*.pvm/
+
