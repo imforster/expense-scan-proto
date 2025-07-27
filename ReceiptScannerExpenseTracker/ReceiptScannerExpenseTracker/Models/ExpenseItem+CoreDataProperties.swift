@@ -10,6 +10,7 @@ extension ExpenseItem {
     @NSManaged public var amount: NSDecimalNumber
     @NSManaged public var id: UUID
     @NSManaged public var name: String
+    @NSManaged public var quantity: Int32
     @NSManaged public var category: Category?
     @NSManaged public var expense: Expense?
     @NSManaged public var receiptItem: ReceiptItem?

@@ -1,6 +1,7 @@
 import Foundation
 import CoreData
 import Combine
+import UIKit
 import os.log
 
 /// Centralized data service for managing expense operations with automatic UI updates
@@ -18,6 +19,7 @@ class ExpenseDataService: NSObject, ObservableObject {
     private let logger = Logger(subsystem: "com.receiptscanner.expensetracker", category: "ExpenseDataService")
     private var retryAttempts: [String: Int] = [:]
     private let maxRetryAttempts = 3
+    private var memoryWarningObserver: NSObjectProtocol?
     private lazy var fetchedResultsController: NSFetchedResultsController<Expense> = {
         let fetchRequest: NSFetchRequest<Expense> = Expense.fetchRequest()
         fetchRequest.sortDescriptors = [
@@ -57,10 +59,38 @@ class ExpenseDataService: NSObject, ObservableObject {
             name: .expenseDataChanged,
             object: nil
         )
+        
+        // Listen for memory warnings to optimize memory usage
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleMemoryWarning()
+        }
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        if let observer = memoryWarningObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    
+    // MARK: - Memory Management
+    
+    /// Handles memory warnings by optimizing Core Data usage
+    private func handleMemoryWarning() {
+        logger.warning("Memory warning received, optimizing Core Data usage")
+        
+        // Clear caches
+        clearCaches()
+        
+        // Optimize memory usage
+        optimizeMemoryUsage()
+        
+        // Reset retry attempts to free memory
+        retryAttempts.removeAll()
     }
     
     // MARK: - Public Methods

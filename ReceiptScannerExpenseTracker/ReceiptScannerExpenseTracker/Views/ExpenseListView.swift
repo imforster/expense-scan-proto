@@ -119,7 +119,7 @@ struct ExpenseListView: View {
         }) {
             if let expense = selectedExpense {
                 NavigationView {
-                    ExpenseDetailView(expenseID: expense.objectID, context: viewContext)
+                    ExpenseDetailView(expense: expense)
                 }
             }
         }

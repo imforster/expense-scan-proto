@@ -5,156 +5,42 @@ struct ExpenseDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     
-    // Use the new ViewModel with state machine
-    @StateObject private var viewModel: ExpenseDetailViewModel
-    
+    @ObservedObject var expense: Expense
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var isDeleting = false
-    
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        formatter.timeStyle = .short
-        return formatter
-    }()
-    
-    // Store the expense ID for safe access
-    private let expenseID: NSManagedObjectID
-    
-    // Initialize with the expenseID and context
-    init(expenseID: NSManagedObjectID, context: NSManagedObjectContext? = nil) {
-        self.expenseID = expenseID
-        // Use the provided context or fall back to shared context
-        let contextToUse = context ?? CoreDataManager.shared.viewContext
-        let dataService = ExpenseDataService(context: contextToUse)
-        _viewModel = StateObject(wrappedValue: ExpenseDetailViewModel(dataService: dataService, expenseID: expenseID))
-    }
+    @State private var isDataLoaded = false
     
     var body: some View {
         ZStack {
-            // Background
             AppTheme.backgroundColor.ignoresSafeArea()
             
-            // Content based on view state
-            Group {
-                switch viewModel.viewState {
-                case .loading:
-                    loadingView
-                case .loaded(let expense):
-                    expenseDetailContent(expense: expense)
-                case .error(let error):
-                    errorView(error: error)
-                case .deleted:
-                    deletedView
-                }
+            if expense.isDeleted {
+                deletedView
+            } else if !isDataLoaded {
+                loadingView
+            } else {
+                expenseDetailContent
             }
         }
         .navigationTitle("Expense Details")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Close") {
-                    dismiss()
-                }
-            }
-            
-            ToolbarItem(placement: .navigationBarTrailing) {
-                navigationBarTrailingItems
-            }
-        }
-        .sheet(isPresented: $showingEditView, onDismiss: {
-            // Refresh the expense data after editing
-            Task {
-                await viewModel.refreshExpense()
-            }
-        }) {
-            if let expense = viewModel.expense {
-                // Use the same context as the expense object to avoid context mismatch
-                ExpenseEditView(expense: expense, context: expense.managedObjectContext ?? viewContext)
-            }
+        .toolbar { toolbarContent }
+        .sheet(isPresented: $showingEditView) {
+            ExpenseEditView(expense: expense, context: viewContext)
         }
         .alert("Delete Expense", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                deleteExpense()
-            }
+            deleteAlert
         } message: {
             Text("Are you sure you want to delete this expense? This action cannot be undone.")
         }
-        .task {
-            // Ensure data loads when view appears
-            await viewModel.loadExpense()
-        }
-        .onDisappear {
-            // Clean up when view disappears to prevent crashes
-            Task {
-                await viewModel.cleanup()
-            }
+        .onAppear {
+            refreshExpenseData()
         }
     }
     
-    // MARK: - View Components
-    
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            
-            Text("Loading expense details...")
-                .font(.headline)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    private func errorView(error: ExpenseError) -> some View {
-        VStack(spacing: 24) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 50))
-                .foregroundColor(.orange)
-            
-            Text(viewModel.userFriendlyErrorMessage())
-                .font(.headline)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            Text(viewModel.recoverySuggestion())
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            if viewModel.isErrorRecoverable() {
-                Button(action: {
-                    Task {
-                        await viewModel.recoverFromError()
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "arrow.clockwise")
-                        Text("Try Again")
-                    }
-                    .padding()
-                    .background(AppTheme.primaryColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                .disabled(viewModel.recoveryInProgress)
-                .opacity(viewModel.recoveryInProgress ? 0.6 : 1.0)
-                .overlay(
-                    Group {
-                        if viewModel.recoveryInProgress {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .padding(.leading, -25)
-                        }
-                    }
-                )
-            }
-        }
-        .padding()
-    }
+    // MARK: - Content Views
     
     private var deletedView: some View {
         VStack(spacing: 24) {
@@ -169,147 +55,219 @@ struct ExpenseDetailView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
-            Button(action: {
+            Button("Return to Expense List") {
                 dismiss()
-            }) {
-                Text("Return to Expense List")
-                    .padding()
-                    .background(AppTheme.primaryColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
             }
+            .padding()
+            .background(AppTheme.primaryColor)
+            .foregroundColor(.white)
+            .cornerRadius(10)
         }
         .padding()
     }
     
-    private var navigationBarTrailingItems: some View {
-        Group {
-            if case .loaded = viewModel.viewState {
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+            
+            Text("Loading expense details...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button("Close") { dismiss() }
+        }
+        
+        ToolbarItem(placement: .navigationBarTrailing) {
+            if !expense.isDeleted && !isDeleting {
                 Menu {
-                    Button(action: { showingEditView = true }) {
-                        Label("Edit", systemImage: "pencil")
+                    Button("Edit", systemImage: "pencil") {
+                        showingEditView = true
                     }
-                    .disabled(isDeleting)
                     
-                    Button(role: .destructive, action: { showingDeleteAlert = true }) {
-                        Label("Delete", systemImage: "trash")
+                    Button("Delete", systemImage: "trash", role: .destructive) {
+                        showingDeleteAlert = true
                     }
-                    .disabled(isDeleting)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
-                .disabled(isDeleting)
-            } else {
-                // Empty view when not in loaded state
-                EmptyView()
             }
         }
     }
     
-    private func expenseDetailContent(expense: Expense) -> some View {
+    private var deleteAlert: some View {
+        Group {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteExpense()
+            }
+        }
+    }
+    
+    private func deleteExpense() {
+        isDeleting = true
+        
+        // Use Core Data directly for simpler, more reliable deletion
+        viewContext.delete(expense)
+        
+        do {
+            try viewContext.save()
+            dismiss()
+        } catch {
+            // Handle error - you might want to show an alert here
+            print("Failed to delete expense: \(error)")
+            isDeleting = false
+        }
+    }
+    
+    private func refreshExpenseData() {
+        // Ensure the expense object is not a fault and relationships are loaded
+        guard !expense.isDeleted, let context = expense.managedObjectContext else { 
+            isDataLoaded = true
+            return 
+        }
+        
+        // Refresh the object to ensure it's up to date
+        context.refresh(expense, mergeChanges: true)
+        
+        // Force load relationships that might be faulted
+        _ = expense.category
+        _ = expense.receipt
+        _ = expense.items
+        _ = expense.tags
+        
+        // Small delay to ensure UI updates properly
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isDataLoaded = true
+        }
+    }
+    
+    // MARK: - Expense Detail Content
+    
+    private var expenseDetailContent: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 24) {
-                // Header Card
-                self.headerCard(expense: expense)
+                headerCard
                 
-                // Receipt Image (if available)
                 if let receipt = expense.receipt {
-                    self.receiptImageCard(receipt: receipt)
+                    receiptImageCard(receipt: receipt)
                 }
                 
-                // Expense Details
-                self.detailsCard(expense: expense)
+                detailsCard
                 
-                // Items (if available)
                 if !expense.safeExpenseItems.isEmpty {
-                    self.itemsCard(items: expense.safeExpenseItems)
+                    itemsCard(items: expense.safeExpenseItems)
                 }
                 
-                // Tags (if available)
                 if !expense.safeTags.isEmpty {
-                    self.tagsCard(tags: expense.safeTags)
+                    tagsCard(tags: expense.safeTags)
                 }
                 
-                // Notes (if available)
                 if !expense.safeNotes.isEmpty {
-                    self.notesCard(notes: expense.safeNotes)
+                    notesCard(notes: expense.safeNotes)
                 }
-                
-                // Action Buttons
-                self.actionButtons
             }
             .padding()
         }
         .refreshable {
-            await viewModel.refreshExpense()
+            // With @ObservedObject, the view automatically updates
+            // This is just for pull-to-refresh visual feedback
+            try? await Task.sleep(nanoseconds: 100_000_000)
         }
     }
     
-    private func headerCard(expense: Expense) -> some View {
+    // MARK: - Card Components
+    
+    private var headerCard: some View {
         CardView {
             VStack(spacing: 16) {
-                // Amount
                 Text(expense.formattedAmount())
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 
-                // Merchant
                 Text(expense.safeMerchant)
                     .font(.title2)
                     .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
                 
-                // Date
                 Text(expense.formattedDate())
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                // Category
                 if let category = expense.category {
-                    let categoryColor = Color(hex: category.colorHex) ?? .blue
-                    HStack {
-                        Image(systemName: category.safeIcon)
-                            .foregroundColor(categoryColor)
-                        
-                        Text(category.safeName)
-                            .font(.subheadline)
-                            .foregroundColor(categoryColor)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(categoryColor.opacity(0.1))
-                    .cornerRadius(16)
+                    categoryBadge(category: category)
                 }
                 
-                // Recurring indicator
                 if expense.isRecurring {
-                    VStack(spacing: 4) {
-                        HStack {
-                            Image(systemName: "repeat")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                            
-                            Text("Recurring Expense")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                        
-                        // Extract recurring pattern if available
-                        if let notes = expense.notes,
-                           let patternRange = notes.range(of: "\\[Recurring: ([^\\]]+)\\]", options: .regularExpression) {
-                            let patternString = String(notes[patternRange])
-                                .replacingOccurrences(of: "[Recurring: ", with: "")
-                                .replacingOccurrences(of: "]", with: "")
-                            
-                            Text(patternString)
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                        }
+                    recurringBadge
+                }
+            }
+        }
+    }
+    
+    private func categoryBadge(category: Category) -> some View {
+        let categoryColor = Color(hex: category.colorHex) ?? .blue
+        
+        return HStack {
+            Image(systemName: category.safeIcon)
+                .foregroundColor(categoryColor)
+            
+            Text(category.safeName)
+                .font(.subheadline)
+                .foregroundColor(categoryColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(categoryColor.opacity(0.1))
+        .cornerRadius(16)
+    }
+    
+    private var recurringBadge: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Image(systemName: "repeat")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                
+                Text("Recurring Expense")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
+            
+            if let pattern = expense.recurringPattern {
+                Text(pattern)
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(12)
+    }
+    
+    private var detailsCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 16) {
+                cardHeader(title: "Details", icon: "info.circle")
+                
+                VStack(spacing: 12) {
+                    DetailRow(label: "Amount", value: expense.formattedAmount())
+                    DetailRow(label: "Date", value: expense.formattedDate())
+                    DetailRow(label: "Merchant", value: expense.safeMerchant)
+                    DetailRow(label: "Category", value: expense.safeCategoryName)
+                    
+                    if expense.safePaymentMethod != "Unknown" {
+                        DetailRow(label: "Payment Method", value: expense.safePaymentMethod)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(12)
+                    
+                    DetailRow(label: "Recurring", value: expense.isRecurring ? "Yes" : "No")
                 }
             }
         }
@@ -318,17 +276,8 @@ struct ExpenseDetailView: View {
     private func receiptImageCard(receipt: Receipt) -> some View {
         CardView {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "doc.text.image")
-                        .foregroundColor(AppTheme.primaryColor)
-                    
-                    Text("Receipt Image")
-                        .font(.headline)
-                    
-                    Spacer()
-                }
+                cardHeader(title: "Receipt Image", icon: "doc.text.image")
                 
-                // Placeholder for receipt image
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.gray.opacity(0.3))
                     .frame(height: 200)
@@ -347,48 +296,12 @@ struct ExpenseDetailView: View {
         }
     }
     
-    private func detailsCard(expense: Expense) -> some View {
-        CardView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(AppTheme.primaryColor)
-                    
-                    Text("Details")
-                        .font(.headline)
-                    
-                    Spacer()
-                }
-                
-                VStack(spacing: 12) {
-                    DetailRow(label: "Amount", value: expense.formattedAmount())
-                    DetailRow(label: "Date", value: expense.formattedDate())
-                    DetailRow(label: "Merchant", value: expense.safeMerchant)
-                    
-                    DetailRow(label: "Category", value: expense.safeCategoryName)
-                    
-                    if !expense.safePaymentMethod.isEmpty && expense.safePaymentMethod != "Unknown" {
-                        DetailRow(label: "Payment Method", value: expense.safePaymentMethod)
-                    }
-                    
-                    DetailRow(label: "Recurring", value: expense.isRecurring ? "Yes" : "No")
-                }
-            }
-        }
-    }
-    
     private func itemsCard(items: [ExpenseItem]) -> some View {
         CardView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Image(systemName: "list.bullet")
-                        .foregroundColor(AppTheme.primaryColor)
-                    
-                    Text("Items")
-                        .font(.headline)
-                    
+                    cardHeader(title: "Items", icon: "list.bullet")
                     Spacer()
-                    
                     Text("\(items.count) item\(items.count == 1 ? "" : "s")")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -396,18 +309,7 @@ struct ExpenseDetailView: View {
                 
                 VStack(spacing: 8) {
                     ForEach(items, id: \.id) { item in
-                        HStack {
-                            Text(item.safeName)
-                                .font(.body)
-                            
-                            Spacer()
-                            
-                            Text(item.formattedAmount())
-                                .font(.body)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.vertical, 4)
-                        
+                        itemRow(item: item)
                         if item != items.last {
                             Divider()
                         }
@@ -420,27 +322,13 @@ struct ExpenseDetailView: View {
     private func tagsCard(tags: [Tag]) -> some View {
         CardView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Image(systemName: "tag")
-                        .foregroundColor(AppTheme.primaryColor)
-                    
-                    Text("Tags")
-                        .font(.headline)
-                    
-                    Spacer()
-                }
+                cardHeader(title: "Tags", icon: "tag")
                 
                 LazyVGrid(columns: [
                     GridItem(.adaptive(minimum: 80))
                 ], spacing: 8) {
                     ForEach(tags, id: \.id) { tag in
-                        Text(tag.safeName)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(AppTheme.primaryColor.opacity(0.1))
-                            .foregroundColor(AppTheme.primaryColor)
-                            .cornerRadius(12)
+                        tagBadge(tag: tag)
                     }
                 }
             }
@@ -449,53 +337,81 @@ struct ExpenseDetailView: View {
     
     private func notesCard(notes: String) -> some View {
         CardView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Image(systemName: "note.text")
-                        .foregroundColor(AppTheme.primaryColor)
-                    
-                    Text("Notes")
-                        .font(.headline)
-                    
-                    Spacer()
-                }
+            VStack(alignment: .leading, spacing: 12) {
+                cardHeader(title: "Notes", icon: "note.text")
                 
                 Text(notes)
                     .font(.body)
                     .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
             }
         }
     }
     
-    private var actionButtons: some View {
-        VStack(spacing: 12) {
-            PrimaryButton(title: "Edit Expense") {
-                showingEditView = true
-            }
+    // MARK: - Helper Views
+    
+    private func cardHeader(title: String, icon: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
             
-            SecondaryButton(title: "Delete Expense") {
-                showingDeleteAlert = true
-            }
+            Text(title)
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            Spacer()
         }
     }
     
-    private func deleteExpense() {
-        isDeleting = true
-        
-        // Use the ViewModel to delete the expense
-        Task {
-            await viewModel.deleteExpense()
+    private func itemRow(item: ExpenseItem) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.safeName)
+                    .font(.body)
+                    .fontWeight(.medium)
+                
+                // Only show description if the ExpenseItem has a description property
+                // Remove this section if ExpenseItem doesn't have a description field
+                /*
+                if !item.safeDescription.isEmpty {
+                    Text(item.safeDescription)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                */
+            }
             
-            // Dismiss the view after deletion
-            DispatchQueue.main.async {
-                dismiss()
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(item.formattedAmount())
+                    .font(.body)
+                    .fontWeight(.medium)
+                
+                if item.quantity > 1 {
+                    Text("Qty: \(Int(item.quantity))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
         }
+        .padding(.vertical, 4)
+    }
+    
+    private func tagBadge(tag: Tag) -> some View {
+        Text(tag.safeName)
+            .font(.caption)
+            .fontWeight(.medium)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.blue.opacity(0.1))
+            .foregroundColor(.blue)
+            .cornerRadius(12)
     }
 }
 
-// MARK: - Detail Row Component
+// MARK: - Supporting Views
+
 struct DetailRow: View {
     let label: String
     let value: String
@@ -511,21 +427,36 @@ struct DetailRow: View {
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
 
-// Using NumberFormatter.currency from Expense+Extensions.swift
+// MARK: - Extensions
 
-#if DEBUG
-struct ExpenseDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        let context = PersistenceController.preview.container.viewContext
-        let expense = Expense.createSampleExpense(context: context)
+extension Color {
+    init?(hex: String?) {
+        guard let hex = hex else { return nil }
         
-        // Pass the objectID to the ExpenseDetailView
-        return ExpenseDetailView(expenseID: expense.objectID)
+        let hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        let scanner = Scanner(string: hexString)
+        
+        if hexString.hasPrefix("#") {
+            scanner.scanLocation = 1
+        }
+        
+        var color: UInt32 = 0
+        scanner.scanHexInt32(&color)
+        
+        let mask = 0x000000FF
+        let r = Int(color >> 16) & mask
+        let g = Int(color >> 8) & mask
+        let b = Int(color) & mask
+        
+        let red   = Double(r) / 255.0
+        let green = Double(g) / 255.0
+        let blue  = Double(b) / 255.0
+        
+        self.init(.sRGB, red: red, green: green, blue: blue, opacity: 1)
     }
 }
-#endif
