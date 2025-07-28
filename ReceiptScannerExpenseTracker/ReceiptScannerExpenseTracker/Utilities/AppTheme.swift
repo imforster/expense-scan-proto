@@ -1,5 +1,9 @@
 import SwiftUI
+import Foundation
+
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// AppTheme defines the app's visual styling including colors, fonts, and dimensions
 struct AppTheme {
@@ -29,7 +33,7 @@ struct AppTheme {
         if let _ = UIColor(named: "BackgroundColor") {
             return Color("BackgroundColor", bundle: nil)
         }
-        return defaultBackgroundColor
+        return Color(UIColor.systemBackground)
     }()
     
     static let errorColor: Color = {
@@ -39,11 +43,18 @@ struct AppTheme {
         return defaultErrorColor
     }()
     
+    // Additional adaptive colors for better theme support
+    static let cardBackgroundColor = Color(UIColor.secondarySystemBackground)
+    static let groupedBackgroundColor = Color(UIColor.systemGroupedBackground)
+    static let separatorColor = Color(UIColor.separator)
+    static let labelColor = Color(UIColor.label)
+    static let secondaryLabelColor = Color(UIColor.secondaryLabel)
+    static let tertiaryLabelColor = Color(UIColor.tertiaryLabel)
+    
     // Default colors as fallbacks
     static let defaultPrimaryColor = Color.blue
     static let defaultSecondaryColor = Color.green
     static let defaultAccentColor = Color.orange
-    static let defaultBackgroundColor = Color.white
     static let defaultErrorColor = Color.red
     
     // MARK: - Typography
@@ -139,7 +150,7 @@ extension View {
     func cardStyle() -> some View {
         self
             .padding(AppTheme.Dimensions.standardPadding)
-            .background(Color.white)
+            .background(AppTheme.cardBackgroundColor)
             .cornerRadius(AppTheme.Dimensions.cardCornerRadius)
             .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
             .padding(.horizontal, AppTheme.Dimensions.standardPadding)

@@ -140,7 +140,7 @@ struct ImageReviewView: View {
                                 }
                                 .padding(.vertical, 12)
                                 .padding(.horizontal, 16)
-                                .background(Color.white)
+                                .background(AppTheme.cardBackgroundColor)
                                 .cornerRadius(12)
                             }
                             .accessibilityLabel("Process and extract receipt data")

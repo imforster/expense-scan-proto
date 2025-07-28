@@ -11,7 +11,7 @@ struct CardView<Content: View>: View {
     var body: some View {
         content
             .padding()
-            .background(Color.white)
+            .background(AppTheme.cardBackgroundColor)
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
@@ -47,7 +47,7 @@ struct SecondaryButton: View {
                 .foregroundColor(AppTheme.primaryColor)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.white)
+                .background(AppTheme.cardBackgroundColor)
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
