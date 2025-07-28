@@ -105,7 +105,7 @@ struct ContentView: View {
                         .font(.system(size: 18))
                         .foregroundColor(AppTheme.primaryColor)
                         .padding(8)
-                        .background(Color.white)
+                        .background(AppTheme.cardBackgroundColor)
                         .cornerRadius(8)
                         .shadow(color: Color.black.opacity(0.1), radius: 2)
                 }
@@ -242,125 +242,7 @@ struct ContentView: View {
     }
     
     private var settingsPlaceholderView: some View {
-        VStack {
-            CustomNavigationBar(title: "Settings", showBackButton: false)
-            
-            List {
-                Section(header: Text("Account")) {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Profile")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Notifications")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                Section(header: Text("Preferences")) {
-                    HStack {
-                        Image(systemName: "paintbrush.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Appearance")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Text(colorScheme == .dark ? "Dark" : "Light")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        Image(systemName: "accessibility")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Accessibility")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                Section(header: Text("Data")) {
-                    HStack {
-                        Image(systemName: "icloud.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Sync & Backup")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Privacy & Security")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                Section {
-                    HStack {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("About")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            .listStyle(InsetGroupedListStyle())
-        }
+        SettingsView()
     }
 }
 

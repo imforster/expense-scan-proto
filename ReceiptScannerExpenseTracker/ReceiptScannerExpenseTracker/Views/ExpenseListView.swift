@@ -29,7 +29,7 @@ struct ExpenseListView: View {
                             .font(.system(size: 16))
                             .foregroundColor(AppTheme.primaryColor)
                             .padding(8)
-                            .background(Color.white)
+                            .background(AppTheme.cardBackgroundColor)
                             .cornerRadius(8)
                             .shadow(color: Color.black.opacity(0.1), radius: 2)
                     }
@@ -41,7 +41,7 @@ struct ExpenseListView: View {
                             .font(.system(size: 16))
                             .foregroundColor(AppTheme.primaryColor)
                             .padding(8)
-                            .background(Color.white)
+                            .background(AppTheme.cardBackgroundColor)
                             .cornerRadius(8)
                             .shadow(color: Color.black.opacity(0.1), radius: 2)
                     }
@@ -53,7 +53,7 @@ struct ExpenseListView: View {
                             .font(.system(size: 16))
                             .foregroundColor(AppTheme.primaryColor)
                             .padding(8)
-                            .background(Color.white)
+                            .background(AppTheme.cardBackgroundColor)
                             .cornerRadius(8)
                             .shadow(color: Color.black.opacity(0.1), radius: 2)
                     }
@@ -83,7 +83,7 @@ struct ExpenseListView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
-                .background(Color(.systemGray6))
+                .background(Color(UIColor.systemGray6))
             }
             
             // Content
@@ -259,7 +259,7 @@ struct ExpenseRowView: View {
                     .foregroundColor(.gray)
             }
             .padding()
-            .background(Color.white)
+            .background(AppTheme.cardBackgroundColor)
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
         }

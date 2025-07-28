@@ -44,7 +44,7 @@ struct CustomTabBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.white)
+        .background(AppTheme.cardBackgroundColor)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: -2)
     }
@@ -77,7 +77,7 @@ struct CustomNavigationBar<TrailingContent: View>: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(AppTheme.primaryColor)
                         .padding(8)
-                        .background(Color.white)
+                        .background(AppTheme.cardBackgroundColor)
                         .cornerRadius(8)
                         .shadow(color: Color.black.opacity(0.1), radius: 2)
                 }
@@ -97,7 +97,7 @@ struct CustomNavigationBar<TrailingContent: View>: View {
             trailingContent
         }
         .padding()
-        .background(Color.white)
+        .background(AppTheme.cardBackgroundColor)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
 }
@@ -138,7 +138,7 @@ struct CustomSegmentedControl: View {
                 .accessibilityHint(selection == index ? "Selected" : "Tap to select")
             }
         }
-        .background(Color(.systemGray6))
+        .background(Color(UIColor.systemGray6))
         .cornerRadius(8)
         .padding(.horizontal)
     }
@@ -162,7 +162,7 @@ struct FilterBar: View {
                             .font(.subheadline)
                             .padding(.vertical, 8)
                             .padding(.horizontal, 16)
-                            .background(selectedFilter == filter ? AppTheme.primaryColor : Color(.systemGray6))
+                            .background(selectedFilter == filter ? AppTheme.primaryColor : Color(UIColor.systemGray6))
                             .foregroundColor(selectedFilter == filter ? .white : .primary)
                             .cornerRadius(20)
                     }
@@ -201,7 +201,7 @@ struct SearchBar: View {
             }
         }
         .padding(10)
-        .background(Color(.systemGray6))
+        .background(Color(UIColor.systemGray6))
         .cornerRadius(10)
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
@@ -249,19 +249,19 @@ struct ModalView<Content: View>: View {
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.gray)
                             .padding(8)
-                            .background(Color(.systemGray6))
+                            .background(Color(UIColor.systemGray6))
                             .clipShape(Circle())
                     }
                     .accessibilityLabel("Close")
                 }
                 .padding()
-                .background(Color.white)
+                .background(AppTheme.cardBackgroundColor)
                 
                 Divider()
                 
                 content
                     .frame(maxWidth: .infinity)
-                    .background(Color.white)
+                    .background(AppTheme.cardBackgroundColor)
             }
             .cornerRadius(16)
             .padding()
@@ -307,7 +307,7 @@ struct BottomSheet<Content: View>: View {
                     content
                         .frame(maxWidth: .infinity)
                 }
-                .background(Color.white)
+                .background(AppTheme.cardBackgroundColor)
                 .cornerRadius(16, corners: [.topLeft, .topRight])
                 .transition(.move(edge: .bottom))
             }
