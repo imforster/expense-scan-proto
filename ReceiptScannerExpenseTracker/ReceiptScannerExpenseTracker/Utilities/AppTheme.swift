@@ -30,26 +30,34 @@ struct AppTheme {
     }()
     
     static let backgroundColor: Color = {
+        #if canImport(UIKit)
         if let _ = UIColor(named: "BackgroundColor") {
             return Color("BackgroundColor", bundle: nil)
         }
         return Color(UIColor.systemBackground)
+        #else
+        return Color.white
+        #endif
     }()
     
     static let errorColor: Color = {
+        #if canImport(UIKit)
         if let _ = UIColor(named: "ErrorColor") {
             return Color("ErrorColor", bundle: nil)
         }
+        #endif
         return defaultErrorColor
     }()
     
     // Additional adaptive colors for better theme support
+    #if canImport(UIKit)
     static let cardBackgroundColor = Color(UIColor.secondarySystemBackground)
     static let groupedBackgroundColor = Color(UIColor.systemGroupedBackground)
     static let separatorColor = Color(UIColor.separator)
     static let labelColor = Color(UIColor.label)
     static let secondaryLabelColor = Color(UIColor.secondaryLabel)
     static let tertiaryLabelColor = Color(UIColor.tertiaryLabel)
+
     
     // Default colors as fallbacks
     static let defaultPrimaryColor = Color.blue

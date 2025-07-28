@@ -21,6 +21,7 @@ DerivedData/
 *.swo
 *.xcscheme
 *.xcuserstate
+xcuserdata/
 
 # Swift Package Manager
 .swiftpm/
@@ -61,4 +62,3 @@ fastlane/test_output/
 *.vmwarevm/
 *.parallelsvm/
 *.pvm/
-

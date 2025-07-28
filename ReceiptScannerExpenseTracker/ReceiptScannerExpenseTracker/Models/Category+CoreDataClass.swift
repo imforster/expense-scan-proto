@@ -2,30 +2,45 @@ import Foundation
 import CoreData
 import SwiftUI
 
-@objc(ReceiptScannerExpenseTrackerCategory)
+@objc(Category)
 public class Category: NSManagedObject {
-    // Computed property to get the color from the hex string
-    public var color: Color {
-        return Color(hex: colorHex) ?? .gray
+    
+    // MARK: - Convenience Initializers
+    
+    convenience init(context: NSManagedObjectContext, name: String, colorHex: String, icon: String) {
+        self.init(context: context)
+        self.id = UUID()
+        self.name = name
+        self.colorHex = colorHex
+        self.icon = icon
+        self.isDefault = false
     }
-}
-
-// Extension to create Color from hex string
-extension Color {
-    init?(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-        
-        var rgb: UInt64 = 0
-        
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
-            return nil
-        }
-        
-        let red = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let green = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let blue = Double(rgb & 0x0000FF) / 255.0
-        
-        self.init(red: red, green: green, blue: blue)
+    
+    // MARK: - Computed Properties
+    
+    var color: Color {
+        return Color(hex: colorHex) ?? .blue
+    }
+    
+    var safeName: String {
+        return name ?? "Unknown Category"
+    }
+    
+    var safeIcon: String {
+        return icon ?? "tag.fill"
+    }
+    
+    var expenseCount: Int {
+        return expenses?.count ?? 0
+    }
+    
+    // MARK: - Helper Methods
+    
+    func addExpense(_ expense: Expense) {
+        addToExpenses(expense)
+    }
+    
+    func removeExpense(_ expense: Expense) {
+        removeFromExpenses(expense)
     }
 }

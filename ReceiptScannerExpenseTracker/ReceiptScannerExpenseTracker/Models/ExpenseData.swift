@@ -1,9 +1,6 @@
 import Foundation
-import CoreData
 
-// MARK: - Data Transfer Objects
-
-/// Data structure for creating/updating expenses
+/// Data transfer object for expense information
 struct ExpenseData {
     let amount: Decimal
     let merchant: String
@@ -11,18 +8,18 @@ struct ExpenseData {
     let notes: String?
     let paymentMethod: String?
     let isRecurring: Bool
-    let category: CategoryData?
+    let categoryId: UUID?
     let tags: [TagData]
     let items: [ExpenseItemData]
     
     init(
         amount: Decimal,
         merchant: String,
-        date: Date,
+        date: Date = Date(),
         notes: String? = nil,
         paymentMethod: String? = nil,
         isRecurring: Bool = false,
-        category: CategoryData? = nil,
+        categoryId: UUID? = nil,
         tags: [TagData] = [],
         items: [ExpenseItemData] = []
     ) {
@@ -32,60 +29,25 @@ struct ExpenseData {
         self.notes = notes
         self.paymentMethod = paymentMethod
         self.isRecurring = isRecurring
-        self.category = category
+        self.categoryId = categoryId
         self.tags = tags
         self.items = items
     }
 }
 
-/// Data structure for category information
-struct CategoryData: Equatable, Hashable {
+struct TagData: Equatable {
     let id: UUID
     let name: String
-    let icon: String?
-    let colorHex: String?
-    
-    init(id: UUID, name: String, icon: String? = nil, colorHex: String? = nil) {
-        self.id = id
-        self.name = name
-        self.icon = icon
-        self.colorHex = colorHex
-    }
-    
-    init(from category: Category) {
-        self.id = category.id
-        self.name = category.name
-        self.icon = category.icon
-        self.colorHex = category.colorHex
-    }
 }
 
-/// Data structure for tag information
-struct TagData: Equatable, Hashable {
-    let id: UUID
-    let name: String
-    
-    init(id: UUID, name: String) {
-        self.id = id
-        self.name = name
-    }
-    
-    init(from tag: Tag) {
-        self.id = tag.id
-        self.name = tag.name
-    }
-}
-
-/// Data structure for expense item information
-struct ExpenseItemData {
+struct ExpenseItemData: Equatable {
     let name: String
     let amount: Decimal
-    let category: CategoryData?
+    let quantity: Int32
     
-    init(name: String, amount: Decimal, category: CategoryData? = nil) {
+    init(name: String, amount: Decimal, quantity: Int32 = 1) {
         self.name = name
         self.amount = amount
-        self.category = category
+        self.quantity = quantity
     }
 }
-

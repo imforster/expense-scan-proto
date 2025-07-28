@@ -1,119 +1,97 @@
 import Foundation
 
-/// Comprehensive error handling for expense operations
+/// Standardized error type for expense-related operations
 enum ExpenseError: LocalizedError, Equatable {
-    case loadingFailed(Error)
-    case savingFailed(Error)
-    case deletionFailed(Error)
-    case notFound
-    case invalidData(String)
-    case networkError(Error)
-    case coreDataError(Error)
-    case validationError(String)
-    case permissionDenied
-    case storageQuotaExceeded
-    case concurrencyConflict
-    case dataCorruption(String)
     
-    // MARK: - LocalizedError Implementation
+    // MARK: - Error Cases
+    
+    /// Failed to load expenses from the data store
+    case loadingFailed(String)
+    
+    /// Failed to save a new or updated expense
+    case savingFailed(String)
+    
+    /// Failed to delete an expense
+    case deletionFailed(String)
+    
+    /// The requested expense was not found
+    case notFound
+    
+    /// The provided data is invalid or incomplete
+    case invalidData(String)
+    
+    /// A validation rule failed (e.g., amount must be positive)
+    case validationFailed(String)
+    
+    /// A network-related error occurred
+    case networkError(String)
+    
+    /// A CoreData-specific error occurred
+    case coreDataError(String)
+    
+    /// The user does not have permission to perform the action
+    case permissionDenied
+    
+    /// The storage quota has been exceeded
+    case storageQuotaExceeded
+    
+    /// A data synchronization error occurred
+    case syncFailed(String)
+    
+    // MARK: - Error Descriptions
     
     var errorDescription: String? {
         switch self {
-        case .loadingFailed:
-            return "Failed to load expenses. Please try again."
-        case .savingFailed:
-            return "Failed to save expense. Please check your data and try again."
-        case .deletionFailed:
-            return "Failed to delete expense. Please try again."
+        case .loadingFailed(let message):
+            return "Failed to load expenses: \(message)"
+        case .savingFailed(let message):
+            return "Failed to save expense: \(message)"
+        case .deletionFailed(let message):
+            return "Failed to delete expense: \(message)"
         case .notFound:
-            return "The requested expense could not be found."
+            return "The requested expense was not found."
         case .invalidData(let details):
-            return "Invalid expense data: \(details)"
-        case .networkError:
-            return "Network connection error. Please check your internet connection."
-        case .coreDataError:
-            return "Database error occurred. Please restart the app."
-        case .validationError(let details):
-            return "Validation error: \(details)"
-        case .permissionDenied:
-            return "Permission denied. Please check app permissions."
-        case .storageQuotaExceeded:
-            return "Storage quota exceeded. Please free up space."
-        case .concurrencyConflict:
-            return "Data conflict detected. Please refresh and try again."
-        case .dataCorruption(let details):
-            return "Data corruption detected: \(details)"
-        }
-    }
-    
-    var failureReason: String? {
-        switch self {
-        case .loadingFailed(let error):
-            return "Loading failed: \(error.localizedDescription)"
-        case .savingFailed(let error):
-            return "Saving failed: \(error.localizedDescription)"
-        case .deletionFailed(let error):
-            return "Deletion failed: \(error.localizedDescription)"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
-        case .coreDataError(let error):
-            return "Core Data error: \(error.localizedDescription)"
-        case .notFound:
-            return "The expense may have been deleted by another process."
-        case .invalidData(let details):
-            return "Data validation failed: \(details)"
-        case .validationError(let details):
+            return "Invalid data provided: \(details)"
+        case .validationFailed(let details):
             return "Validation failed: \(details)"
+        case .networkError(let message):
+            return "Network error: \(message)"
+        case .coreDataError(let message):
+            return "A database error occurred: \(message)"
         case .permissionDenied:
-            return "The app doesn't have the required permissions."
+            return "You do not have permission to perform this action."
         case .storageQuotaExceeded:
-            return "Device storage is full or quota exceeded."
-        case .concurrencyConflict:
-            return "Another process modified the data simultaneously."
-        case .dataCorruption(let details):
-            return "Data integrity check failed: \(details)"
+            return "Storage quota has been exceeded."
+        case .syncFailed(let message):
+            return "Data synchronization failed: \(message)"
         }
     }
     
     var recoverySuggestion: String? {
         switch self {
-        case .loadingFailed:
-            return "Try refreshing the expense list or restarting the app."
-        case .savingFailed:
-            return "Check your data and try saving again. If the problem persists, restart the app."
-        case .deletionFailed:
-            return "Try deleting the expense again. If it still fails, restart the app."
-        case .notFound:
-            return "Refresh the expense list to see the current data."
-        case .invalidData:
-            return "Please check all required fields are filled correctly."
+        case .loadingFailed, .savingFailed, .deletionFailed:
+            return "Please try again later."
         case .networkError:
-            return "Check your internet connection and try again."
-        case .coreDataError:
-            return "Restart the app. If the problem persists, contact support."
-        case .validationError:
-            return "Please correct the highlighted fields and try again."
-        case .permissionDenied:
-            return "Go to Settings and grant the required permissions to the app."
+            return "Please check your internet connection and try again."
+        case .validationFailed:
+            return "Please correct the invalid data and try again."
         case .storageQuotaExceeded:
-            return "Free up storage space on your device or in iCloud."
-        case .concurrencyConflict:
-            return "Refresh the data and try your operation again."
-        case .dataCorruption:
-            return "Try restarting the app. If the problem persists, you may need to restore from backup."
+            return "Please free up some space and try again."
+        default:
+            return "If the problem persists, please contact support."
         }
     }
     
-    // MARK: - Error Classification
+    // MARK: - Error Properties
     
     /// Indicates if this error is recoverable through user action
     var isRecoverable: Bool {
         switch self {
-        case .loadingFailed, .savingFailed, .deletionFailed, .networkError, .concurrencyConflict:
+        case .loadingFailed, .savingFailed, .deletionFailed, .networkError:
             return true
-        case .notFound, .invalidData, .validationError, .permissionDenied, .storageQuotaExceeded:
+        case .notFound, .invalidData, .validationFailed, .permissionDenied, .storageQuotaExceeded:
             return true
-        case .coreDataError, .dataCorruption:
+        case .coreDataError, .syncFailed:
             return false
         }
     }
@@ -121,7 +99,7 @@ enum ExpenseError: LocalizedError, Equatable {
     /// Indicates if this error should be retried automatically
     var shouldRetry: Bool {
         switch self {
-        case .networkError, .concurrencyConflict:
+        case .networkError:
             return true
         case .loadingFailed, .savingFailed, .deletionFailed:
             return false // Let user decide
@@ -133,39 +111,38 @@ enum ExpenseError: LocalizedError, Equatable {
     /// The severity level of this error
     var severity: ErrorSeverity {
         switch self {
-        case .invalidData, .validationError, .notFound:
+        case .invalidData, .validationFailed, .notFound:
             return .low
-        case .loadingFailed, .savingFailed, .deletionFailed, .networkError, .permissionDenied, .storageQuotaExceeded, .concurrencyConflict:
+        case .loadingFailed, .savingFailed, .deletionFailed, .networkError, .permissionDenied, .storageQuotaExceeded:
             return .medium
-        case .coreDataError, .dataCorruption:
+        case .coreDataError, .syncFailed:
             return .high
         }
     }
     
-    // MARK: - Equatable Implementation
+    // MARK: - Equatable Conformance
     
     static func == (lhs: ExpenseError, rhs: ExpenseError) -> Bool {
         switch (lhs, rhs) {
-        case (.loadingFailed(let lhsError), .loadingFailed(let rhsError)):
-            return lhsError.localizedDescription == rhsError.localizedDescription
-        case (.savingFailed(let lhsError), .savingFailed(let rhsError)):
-            return lhsError.localizedDescription == rhsError.localizedDescription
-        case (.deletionFailed(let lhsError), .deletionFailed(let rhsError)):
-            return lhsError.localizedDescription == rhsError.localizedDescription
-        case (.networkError(let lhsError), .networkError(let rhsError)):
-            return lhsError.localizedDescription == rhsError.localizedDescription
-        case (.coreDataError(let lhsError), .coreDataError(let rhsError)):
-            return lhsError.localizedDescription == rhsError.localizedDescription
+        case (.loadingFailed(let lhsMessage), .loadingFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.savingFailed(let lhsMessage), .savingFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.deletionFailed(let lhsMessage), .deletionFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.validationFailed(let lhsMessage), .validationFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.networkError(let lhsMessage), .networkError(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.coreDataError(let lhsMessage), .coreDataError(let rhsMessage)):
+            return lhsMessage == rhsMessage
         case (.invalidData(let lhsDetails), .invalidData(let rhsDetails)):
             return lhsDetails == rhsDetails
-        case (.validationError(let lhsDetails), .validationError(let rhsDetails)):
-            return lhsDetails == rhsDetails
-        case (.dataCorruption(let lhsDetails), .dataCorruption(let rhsDetails)):
-            return lhsDetails == rhsDetails
+        case (.syncFailed(let lhsMessage), .syncFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
         case (.notFound, .notFound),
              (.permissionDenied, .permissionDenied),
-             (.storageQuotaExceeded, .storageQuotaExceeded),
-             (.concurrencyConflict, .concurrencyConflict):
+             (.storageQuotaExceeded, .storageQuotaExceeded):
             return true
         default:
             return false
@@ -173,120 +150,73 @@ enum ExpenseError: LocalizedError, Equatable {
     }
 }
 
-/// Error severity levels for logging and handling
+/// Severity levels for errors
 enum ErrorSeverity {
-    case low    // User input errors, validation issues
-    case medium // Network errors, temporary failures
-    case high   // System errors, data corruption
+    case low, medium, high
 }
 
-/// Error recovery strategies
-enum ErrorRecoveryStrategy {
-    case retry(maxAttempts: Int, delay: TimeInterval)
-    case userAction(message: String)
-    case fallback(action: () -> Void)
-    case none
-}
-
-// MARK: - Error Factory
-
-/// Factory for creating specific expense errors with context
+/// Factory for creating specific error types from generic errors
 struct ExpenseErrorFactory {
     
-    /// Creates an error from a Core Data error
-    static func fromCoreDataError(_ error: Error) -> ExpenseError {
+    /// Creates an `ExpenseError` from a generic `Error`
+    static func create(from error: Error) -> ExpenseError {
         let nsError = error as NSError
         
-        // Check for common CoreData error codes
         switch nsError.domain {
         case NSCocoaErrorDomain:
             // Handle validation errors
             if nsError.code >= 1550 && nsError.code <= 1570 {
-                return .validationError(nsError.localizedDescription)
+                return .validationFailed(nsError.localizedDescription)
             }
             // Handle other CoreData errors
-            return .coreDataError(error)
+            return .coreDataError(nsError.localizedDescription)
         default:
-            return .coreDataError(error)
+            return .coreDataError(nsError.localizedDescription)
         }
     }
     
-    /// Creates an error from a network error
-    static func fromNetworkError(_ error: Error) -> ExpenseError {
+    /// Creates a network-related `ExpenseError`
+    static func createNetworkError(from error: Error) -> ExpenseError {
         let nsError = error as NSError
         
         switch nsError.code {
         case NSURLErrorNotConnectedToInternet,
              NSURLErrorNetworkConnectionLost:
-            return .networkError(error)
+            return .networkError(nsError.localizedDescription)
         case NSURLErrorTimedOut:
-            return .networkError(error)
+            return .networkError("Request timed out")
         case NSURLErrorCannotFindHost,
              NSURLErrorCannotConnectToHost:
-            return .networkError(error)
+            return .networkError("Cannot connect to server")
         default:
-            return .networkError(error)
+            return .networkError(nsError.localizedDescription)
         }
     }
     
-    /// Validates expense data and returns validation errors
-    static func validateExpenseData(_ data: ExpenseData) -> ExpenseError? {
+    /// Creates a validation error from a dictionary of validation messages
+    static func createValidationError(from messages: [String: String]) -> ExpenseError {
+        let combinedMessage = messages.map { "\($0.key): \($0.value)" }.joined(separator: "; ")
+        return .validationFailed(combinedMessage)
+    }
+    
+    /// Validates an `ExpenseData` object and returns an error if invalid
+    static func validate(expenseData: ExpenseData) -> ExpenseError? {
         var validationErrors: [String] = []
         
-        // Validate amount
-        if data.amount <= 0 {
-            validationErrors.append("Amount must be greater than zero")
+        if expenseData.amount <= 0 {
+            validationErrors.append("Amount must be positive.")
         }
         
-        if data.amount > 999999.99 {
-            validationErrors.append("Amount cannot exceed $999,999.99")
+        if expenseData.merchant.isEmpty {
+            validationErrors.append("Merchant name is required.")
         }
         
-        // Validate merchant
-        if data.merchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            validationErrors.append("Merchant name is required")
-        }
-        
-        if data.merchant.count > 100 {
-            validationErrors.append("Merchant name cannot exceed 100 characters")
-        }
-        
-        // Validate date
-        let calendar = Calendar.current
-        let futureLimit = calendar.date(byAdding: .year, value: 1, to: Date()) ?? Date()
-        let pastLimit = calendar.date(byAdding: .year, value: -10, to: Date()) ?? Date()
-        
-        if data.date > futureLimit {
-            validationErrors.append("Date cannot be more than 1 year in the future")
-        }
-        
-        if data.date < pastLimit {
-            validationErrors.append("Date cannot be more than 10 years in the past")
-        }
-        
-        // Validate notes length
-        if let notes = data.notes, notes.count > 500 {
-            validationErrors.append("Notes cannot exceed 500 characters")
-        }
-        
-        // Validate payment method
-        if let paymentMethod = data.paymentMethod, paymentMethod.count > 50 {
-            validationErrors.append("Payment method cannot exceed 50 characters")
-        }
-        
-        // Validate expense items
-        for (index, item) in data.items.enumerated() {
-            if item.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                validationErrors.append("Item \(index + 1) name is required")
-            }
-            
-            if item.amount <= 0 {
-                validationErrors.append("Item \(index + 1) amount must be greater than zero")
-            }
+        if expenseData.date > Date() {
+            validationErrors.append("Expense date cannot be in the future.")
         }
         
         if !validationErrors.isEmpty {
-            return .validationError(validationErrors.joined(separator: "; "))
+            return .validationFailed(validationErrors.joined(separator: "; "))
         }
         
         return nil
