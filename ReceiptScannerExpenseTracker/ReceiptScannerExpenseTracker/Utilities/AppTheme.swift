@@ -39,11 +39,11 @@ struct AppTheme {
         return defaultErrorColor
     }()
     
-    // Default colors as fallbacks
+    // Default colors as fallbacks - using adaptive system colors
     static let defaultPrimaryColor = Color.blue
     static let defaultSecondaryColor = Color.green
     static let defaultAccentColor = Color.orange
-    static let defaultBackgroundColor = Color.white
+    static let defaultBackgroundColor = Color(.systemBackground)
     static let defaultErrorColor = Color.red
     
     // MARK: - Typography
@@ -117,7 +117,7 @@ extension View {
             .frame(height: AppTheme.Dimensions.buttonHeight)
             .frame(maxWidth: .infinity)
             .background(AppTheme.primaryColor)
-            .foregroundColor(.white)
+            .foregroundColor(Color(.systemBackground))
             .cornerRadius(AppTheme.Dimensions.buttonCornerRadius)
             .padding(.horizontal, AppTheme.Dimensions.standardPadding)
     }
@@ -139,9 +139,9 @@ extension View {
     func cardStyle() -> some View {
         self
             .padding(AppTheme.Dimensions.standardPadding)
-            .background(Color.white)
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(AppTheme.Dimensions.cardCornerRadius)
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 5, x: 0, y: 2)
             .padding(.horizontal, AppTheme.Dimensions.standardPadding)
     }
     

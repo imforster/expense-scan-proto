@@ -148,15 +148,23 @@
     - _Requirements: 4.5, 4.6_
 
 - [ ] 7. User Experience Enhancements
-  - [ ] 7.1 Implement onboarding flow
+  - [ ] 7.1 Implement light and dark mode settings
+    - Create ThemeManager service for theme state management
+    - Implement theme persistence using UserDefaults
+    - Build SettingsView with theme selection UI (Light/Dark/System)
+    - Update AppTheme with adaptive color schemes
+    - Integrate theme switching throughout the app
+    - Add real-time theme preview in settings
+    - _Requirements: 5.1, 5.4_
+
+  - [ ] 7.2 Implement onboarding flow
     - Create welcome screens
     - Build permission request flows
     - Add feature introduction tutorials
     - Implement onboarding skip/resume functionality
-    - Implement light and dark mode in settings
     - _Requirements: 5.1, 5.4_
 
-  - [ ] 7.2 Add offline support
+  - [ ] 7.3 Add offline support
     - Implement offline receipt scanning
     - Create data queuing for sync
     - Add offline mode indicators

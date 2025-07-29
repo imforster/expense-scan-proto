@@ -11,9 +11,9 @@ struct CardView<Content: View>: View {
     var body: some View {
         content
             .padding()
-            .background(Color.white)
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 5, x: 0, y: 2)
     }
 }
 
@@ -26,7 +26,7 @@ struct PrimaryButton: View {
         Button(action: action) {
             Text(title)
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(Color(.systemBackground))
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(AppTheme.primaryColor)
@@ -47,7 +47,7 @@ struct SecondaryButton: View {
                 .foregroundColor(AppTheme.primaryColor)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.white)
+                .background(Color(.secondarySystemBackground))
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)

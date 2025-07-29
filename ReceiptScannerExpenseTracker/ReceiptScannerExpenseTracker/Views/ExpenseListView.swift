@@ -29,9 +29,9 @@ struct ExpenseListView: View {
                             .font(.system(size: 16))
                             .foregroundColor(AppTheme.primaryColor)
                             .padding(8)
-                            .background(Color.white)
+                            .background(Color(.secondarySystemBackground))
                             .cornerRadius(8)
-                            .shadow(color: Color.black.opacity(0.1), radius: 2)
+                            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 2)
                     }
                     .accessibilityLabel("Sort options")
                     
@@ -41,9 +41,9 @@ struct ExpenseListView: View {
                             .font(.system(size: 16))
                             .foregroundColor(AppTheme.primaryColor)
                             .padding(8)
-                            .background(Color.white)
+                            .background(Color(.secondarySystemBackground))
                             .cornerRadius(8)
-                            .shadow(color: Color.black.opacity(0.1), radius: 2)
+                            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 2)
                     }
                     .accessibilityLabel("Filter options")
                     
@@ -53,9 +53,9 @@ struct ExpenseListView: View {
                             .font(.system(size: 16))
                             .foregroundColor(AppTheme.primaryColor)
                             .padding(8)
-                            .background(Color.white)
+                            .background(Color(.secondarySystemBackground))
                             .cornerRadius(8)
-                            .shadow(color: Color.black.opacity(0.1), radius: 2)
+                            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 2)
                     }
                     .accessibilityLabel("Add expense")
                 }
@@ -259,9 +259,9 @@ struct ExpenseRowView: View {
                     .foregroundColor(.gray)
             }
             .padding()
-            .background(Color.white)
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityElement(children: .combine)

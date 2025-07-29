@@ -44,9 +44,9 @@ struct CustomTabBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.white)
+        .background(Color(.systemBackground))
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: -2)
+        .shadow(color: Color(.systemGray4).opacity(0.3), radius: 5, x: 0, y: -2)
     }
 }
 
@@ -77,9 +77,9 @@ struct CustomNavigationBar<TrailingContent: View>: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(AppTheme.primaryColor)
                         .padding(8)
-                        .background(Color.white)
+                        .background(Color(.secondarySystemBackground))
                         .cornerRadius(8)
-                        .shadow(color: Color.black.opacity(0.1), radius: 2)
+                        .shadow(color: Color(.systemGray4).opacity(0.3), radius: 2)
                 }
                 .accessibilityLabel("Back")
                 .accessibilityHint("Go back to previous screen")
@@ -97,8 +97,8 @@ struct CustomNavigationBar<TrailingContent: View>: View {
             trailingContent
         }
         .padding()
-        .background(Color.white)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .background(Color(.systemBackground))
+        .shadow(color: Color(.systemGray4).opacity(0.2), radius: 5, x: 0, y: 2)
     }
 }
 
@@ -131,7 +131,7 @@ struct CustomSegmentedControl: View {
                         .padding(.horizontal, 16)
                         .frame(maxWidth: .infinity)
                         .background(selection == index ? AppTheme.primaryColor : Color.clear)
-                        .foregroundColor(selection == index ? .white : .primary)
+                        .foregroundColor(selection == index ? Color(.systemBackground) : .primary)
                 }
                 .accessibilityLabel(options[index])
                 .accessibilityAddTraits(selection == index ? [.isButton, .isSelected] : [.isButton])
@@ -163,7 +163,7 @@ struct FilterBar: View {
                             .padding(.vertical, 8)
                             .padding(.horizontal, 16)
                             .background(selectedFilter == filter ? AppTheme.primaryColor : Color(.systemGray6))
-                            .foregroundColor(selectedFilter == filter ? .white : .primary)
+                            .foregroundColor(selectedFilter == filter ? Color(.systemBackground) : .primary)
                             .cornerRadius(20)
                     }
                     .accessibilityLabel(filter)
@@ -255,13 +255,13 @@ struct ModalView<Content: View>: View {
                     .accessibilityLabel("Close")
                 }
                 .padding()
-                .background(Color.white)
+                .background(Color(.systemBackground))
                 
                 Divider()
                 
                 content
                     .frame(maxWidth: .infinity)
-                    .background(Color.white)
+                    .background(Color(.systemBackground))
             }
             .cornerRadius(16)
             .padding()
@@ -307,7 +307,7 @@ struct BottomSheet<Content: View>: View {
                     content
                         .frame(maxWidth: .infinity)
                 }
-                .background(Color.white)
+                .background(Color(.systemBackground))
                 .cornerRadius(16, corners: [.topLeft, .topRight])
                 .transition(.move(edge: .bottom))
             }
