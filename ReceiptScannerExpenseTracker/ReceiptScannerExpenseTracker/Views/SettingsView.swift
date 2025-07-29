@@ -57,7 +57,7 @@ struct ThemeSelectionRow: View {
     
     var body: some View {
         HStack {
-            Image(systemName: theme.icon)
+            Image(systemName: theme.iconName)
                 .foregroundColor(.blue)
                 .frame(width: 24, height: 24)
             
