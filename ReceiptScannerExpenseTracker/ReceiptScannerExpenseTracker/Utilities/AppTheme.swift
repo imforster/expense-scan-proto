@@ -1,9 +1,8 @@
 import SwiftUI
-import UIKit
 
 /// AppTheme defines the app's visual styling including colors, fonts, and dimensions
 struct AppTheme {
-    // MARK: - Colors
+    // MARK: - Adaptive Colors
     static let primaryColor: Color = {
         if let _ = UIColor(named: "PrimaryColor") {
             return Color("PrimaryColor", bundle: nil)
@@ -39,12 +38,44 @@ struct AppTheme {
         return defaultErrorColor
     }()
     
-    // Default colors as fallbacks - using adaptive system colors
+    // Default adaptive colors - automatically adjust for light/dark mode
     static let defaultPrimaryColor = Color.blue
     static let defaultSecondaryColor = Color.green
     static let defaultAccentColor = Color.orange
     static let defaultBackgroundColor = Color(.systemBackground)
     static let defaultErrorColor = Color.red
+    
+    // MARK: - Semantic Colors
+    /// Colors that adapt to the current theme
+    struct Colors {
+        static let primary = AppTheme.primaryColor
+        static let secondary = AppTheme.secondaryColor
+        static let accent = AppTheme.accentColor
+        static let background = AppTheme.backgroundColor
+        static let error = AppTheme.errorColor
+        
+        // System adaptive colors
+        static let systemBackground = Color(.systemBackground)
+        static let secondarySystemBackground = Color(.secondarySystemBackground)
+        static let tertiarySystemBackground = Color(.tertiarySystemBackground)
+        
+        static let label = Color(.label)
+        static let secondaryLabel = Color(.secondaryLabel)
+        static let tertiaryLabel = Color(.tertiaryLabel)
+        
+        static let systemGray = Color(.systemGray)
+        static let systemGray2 = Color(.systemGray2)
+        static let systemGray3 = Color(.systemGray3)
+        static let systemGray4 = Color(.systemGray4)
+        static let systemGray5 = Color(.systemGray5)
+        static let systemGray6 = Color(.systemGray6)
+        
+        // Theme-aware custom colors
+        static let cardBackground = Color(.secondarySystemBackground)
+        static let separatorColor = Color(.separator)
+        static let buttonBackground = primary
+        static let buttonForeground = Color(.systemBackground)
+    }
     
     // MARK: - Typography
     struct Typography {
@@ -116,8 +147,8 @@ extension View {
         self
             .frame(height: AppTheme.Dimensions.buttonHeight)
             .frame(maxWidth: .infinity)
-            .background(AppTheme.primaryColor)
-            .foregroundColor(Color(.systemBackground))
+            .background(AppTheme.Colors.buttonBackground)
+            .foregroundColor(AppTheme.Colors.buttonForeground)
             .cornerRadius(AppTheme.Dimensions.buttonCornerRadius)
             .padding(.horizontal, AppTheme.Dimensions.standardPadding)
     }
@@ -127,11 +158,11 @@ extension View {
             .frame(height: AppTheme.Dimensions.buttonHeight)
             .frame(maxWidth: .infinity)
             .background(Color.clear)
-            .foregroundColor(AppTheme.primaryColor)
+            .foregroundColor(AppTheme.Colors.primary)
             .cornerRadius(AppTheme.Dimensions.buttonCornerRadius)
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.Dimensions.buttonCornerRadius)
-                    .stroke(AppTheme.primaryColor, lineWidth: 2)
+                    .stroke(AppTheme.Colors.primary, lineWidth: 2)
             )
             .padding(.horizontal, AppTheme.Dimensions.standardPadding)
     }
@@ -139,9 +170,9 @@ extension View {
     func cardStyle() -> some View {
         self
             .padding(AppTheme.Dimensions.standardPadding)
-            .background(Color(.secondarySystemBackground))
+            .background(AppTheme.Colors.cardBackground)
             .cornerRadius(AppTheme.Dimensions.cardCornerRadius)
-            .shadow(color: Color(.systemGray4).opacity(0.3), radius: 5, x: 0, y: 2)
+            .shadow(color: AppTheme.Colors.systemGray4.opacity(0.3), radius: 5, x: 0, y: 2)
             .padding(.horizontal, AppTheme.Dimensions.standardPadding)
     }
     

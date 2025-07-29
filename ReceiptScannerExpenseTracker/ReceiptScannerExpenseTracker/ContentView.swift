@@ -5,18 +5,18 @@
 //  Created by Ian Forster (Home) on 2025-07-18.
 //
 
-import SwiftUI
 import CoreData
+import SwiftUI
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    
+
     @State private var selectedTab = 0
     @State private var showingCameraView = false
-    
+
     private let tabItems = [
         CustomTabBar.TabItem(
             icon: "house.fill",
@@ -42,7 +42,7 @@ struct ContentView: View {
             icon: "gearshape.fill",
             label: "Settings",
             accessibilityLabel: "Settings tab"
-        )
+        ),
     ]
 
     var body: some View {
@@ -50,23 +50,23 @@ struct ContentView: View {
             TabView(selection: $selectedTab) {
                 homeView
                     .tag(0)
-                
+
                 scanPlaceholderView
                     .tag(1)
-                
+
                 expensesPlaceholderView
                     .tag(2)
-                
+
                 reportsPlaceholderView
                     .tag(3)
-                
+
                 settingsPlaceholderView
                     .tag(4)
             }
             .edgesIgnoringSafeArea(.bottom)
             .opacity(showingCameraView ? 0 : 1)
             .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: showingCameraView)
-            
+
             if !showingCameraView {
                 CustomTabBar(selectedTab: $selectedTab, items: tabItems)
                     .padding(.horizontal)
@@ -77,9 +77,9 @@ struct ContentView: View {
         .background(AppTheme.backgroundColor)
         .animation(reduceMotion ? .none : .easeInOut, value: selectedTab)
     }
-    
+
     // MARK: - Actions
-    
+
     private func handleCapturedImage(_ image: UIImage) {
         // Save the captured image using ImageManager
         if let imageURL = ImageManager.shared.saveReceiptImage(image) {
@@ -89,10 +89,10 @@ struct ContentView: View {
         } else {
             print("Failed to save receipt image")
         }
-        
+
         showingCameraView = false
     }
-    
+
     // Placeholder views for tabs
     private var homeView: some View {
         VStack {
@@ -111,7 +111,7 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Notifications")
             }
-            
+
             ScrollView {
                 VStack(spacing: 20) {
                     // Demo content for home screen
@@ -120,17 +120,17 @@ struct ContentView: View {
                             Text("Welcome to Receipt Scanner")
                                 .font(AppTheme.Typography.headingFont)
                                 .foregroundColor(.primary)
-                            
+
                             Text("Scan your receipts to track expenses and manage your finances.")
                                 .font(AppTheme.Typography.bodyFont)
                                 .foregroundColor(.secondary)
-                            
+
                             PrimaryButton(title: "Scan Receipt") {
                                 selectedTab = 1
                             }
                         }
                     }
-                    
+
                     // Sample expense summary cards
                     HStack(spacing: 12) {
                         ExpenseSummaryCard(
@@ -139,7 +139,7 @@ struct ContentView: View {
                             trend: 5.2,
                             color: AppTheme.primaryColor
                         )
-                        
+
                         ExpenseSummaryCard(
                             title: "Last Month",
                             amount: "1,183.75",
@@ -148,13 +148,13 @@ struct ContentView: View {
                         )
                     }
                     .padding(.horizontal)
-                    
+
                     // Recent transactions section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Recent Transactions")
                             .font(AppTheme.Typography.subheadingFont)
                             .padding(.horizontal)
-                        
+
                         // Sample receipt cards
                         ReceiptCard(
                             merchantName: "Grocery Store",
@@ -164,7 +164,7 @@ struct ContentView: View {
                             onTap: {}
                         )
                         .padding(.horizontal)
-                        
+
                         ReceiptCard(
                             merchantName: "Coffee Shop",
                             date: Date().addingTimeInterval(-86400),
@@ -173,7 +173,7 @@ struct ContentView: View {
                             onTap: {}
                         )
                         .padding(.horizontal)
-                        
+
                         SecondaryButton(title: "View All Expenses") {
                             selectedTab = 2
                         }
@@ -185,14 +185,14 @@ struct ContentView: View {
         }
         .background(AppTheme.backgroundColor)
     }
-    
+
     private var scanPlaceholderView: some View {
         NavigationView {
             VStack {
                 CustomNavigationBar(title: "Scan Receipt", showBackButton: false)
-                
+
                 Spacer()
-                
+
                 EmptyStateView(
                     title: "Scan Receipt",
                     message: "Capture your receipts to automatically extract expense information.",
@@ -202,7 +202,7 @@ struct ContentView: View {
                         showingCameraView = true
                     }
                 )
-                
+
                 Spacer()
             }
             .background(AppTheme.backgroundColor)
@@ -213,157 +213,163 @@ struct ContentView: View {
             }
         }
     }
-    
+
     private var expensesPlaceholderView: some View {
         ExpenseListView()
     }
-    
+
     private var reportsPlaceholderView: some View {
         VStack {
             CustomNavigationBar(title: "Reports", showBackButton: false)
-            
+
             CustomSegmentedControl(
                 selection: .constant(0),
                 options: ["Weekly", "Monthly", "Yearly"]
             )
             .padding(.top)
-            
+
             Spacer()
-            
+
             EmptyStateView(
                 title: "Reports Coming Soon",
-                message: "Visualize your spending patterns and track your budget with detailed reports.",
+                message:
+                    "Visualize your spending patterns and track your budget with detailed reports.",
                 systemImage: "chart.bar.fill"
             )
-            
+
             Spacer()
         }
         .background(AppTheme.backgroundColor)
     }
-    
+
     private var settingsPlaceholderView: some View {
-        VStack {
-            CustomNavigationBar(title: "Settings", showBackButton: false)
-            
-            List {
-                Section(header: Text("Account")) {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Profile")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
+        NavigationView {
+            VStack {
+                CustomNavigationBar(title: "Settings", showBackButton: false)
+
+                List {
+                    Section(header: Text("Account")) {
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppTheme.Colors.primary)
+
+                            Text("Profile")
+                                .font(.body)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 4)
+
+                        HStack {
+                            Image(systemName: "bell.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppTheme.Colors.primary)
+
+                            Text("Notifications")
+                                .font(.body)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Notifications")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
+
+                    Section(header: Text("Preferences")) {
+                        NavigationLink(destination: SettingsView()) {
+                            HStack {
+                                Image(systemName: "paintbrush.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(AppTheme.Colors.primary)
+
+                                Text("Appearance")
+                                    .font(.body)
+
+                                Spacer()
+
+                                Text(ThemeManager.shared.currentTheme.displayName)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.vertical, 4)
+                        }
+
+                        HStack {
+                            Image(systemName: "accessibility")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppTheme.Colors.primary)
+
+                            Text("Accessibility")
+                                .font(.body)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
+
+                    Section(header: Text("Data")) {
+                        HStack {
+                            Image(systemName: "icloud.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppTheme.Colors.primary)
+
+                            Text("Sync & Backup")
+                                .font(.body)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 4)
+
+                        HStack {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppTheme.Colors.primary)
+
+                            Text("Privacy & Security")
+                                .font(.body)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    Section {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppTheme.Colors.primary)
+
+                            Text("About")
+                                .font(.body)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
-                
-                Section(header: Text("Preferences")) {
-                    HStack {
-                        Image(systemName: "paintbrush.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Appearance")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Text(colorScheme == .dark ? "Dark" : "Light")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        Image(systemName: "accessibility")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Accessibility")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                Section(header: Text("Data")) {
-                    HStack {
-                        Image(systemName: "icloud.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Sync & Backup")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("Privacy & Security")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                Section {
-                    HStack {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppTheme.primaryColor)
-                        
-                        Text("About")
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 4)
-                }
+                .listStyle(InsetGroupedListStyle())
             }
-            .listStyle(InsetGroupedListStyle())
         }
     }
 }
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView().environment(
+        \.managedObjectContext, PersistenceController.preview.container.viewContext)
 }
