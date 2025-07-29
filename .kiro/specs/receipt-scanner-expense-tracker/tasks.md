@@ -148,49 +148,23 @@
     - _Requirements: 4.5, 4.6_
 
 - [ ] 7. User Experience Enhancements
-  - [ ] 7.1 Implement onboarding flow
-    - [ ] 7.1.1 Create welcome flow screens
-      - Build welcome/splash screen with app branding
-      - Create feature overview screens (3-4 screens highlighting key features)
-      - Implement smooth navigation between welcome screens
-      - Add progress indicators and navigation controls
-      - _Requirements: 5.1, 5.4_
-    
-    - [ ] 7.1.2 Build permission request flows
-      - Implement camera permission request with clear explanation
-      - Add photo library permission for importing receipts
-      - Create notifications permission flow for budget alerts
-      - Build biometric authentication setup flow
-      - Handle permission denied scenarios gracefully
-      - _Requirements: 5.1, 5.4_
-    
-    - [ ] 7.1.3 Add feature introduction tutorials
-      - Create receipt scanning tutorial with step-by-step guide
-      - Build expense management tutorial for categorization
-      - Implement reporting tutorial for analytics understanding
-      - Add interactive tooltips and contextual help system
-      - Create tutorial overlay system for highlighting UI elements
-      - _Requirements: 5.1, 5.4_
-    
-    - [ ] 7.1.4 Implement onboarding skip/resume functionality
-      - Add progress tracking to save user's onboarding state
-      - Implement skip options for non-essential onboarding steps
-      - Create resume capability to continue from where user left off
-      - Track completion status for individual tutorials
-      - Persist onboarding progress across app launches
-      - _Requirements: 5.1, 5.4_
-    
-    - [x] 7.1.5 Implement light and dark mode in settings
-      - Review current views to be capable of support for both light and dark modes
-      - Create theme selection UI in settings (Light/Dark/System)
-      - Implement manual theme switching functionality
-      - Add system theme following capability
-      - Create theme preview to show changes in real-time
-      - Ensure theme persistence across app launches
-      - Update all UI components to support both themes
-      - _Requirements: 5.1, 5.4_
+  - [x] 7.1 Implement light and dark mode settings
+    - Create ThemeManager service for theme state management
+    - Implement theme persistence using UserDefaults
+    - Build SettingsView with theme selection UI (Light/Dark/System)
+    - Update AppTheme with adaptive color schemes
+    - Integrate theme switching throughout the app
+    - Add real-time theme preview in settings
+    - _Requirements: 5.1, 5.4_
 
-  - [ ] 7.2 Add offline support
+  - [ ] 7.2 Implement onboarding flow
+    - Create welcome screens
+    - Build permission request flows
+    - Add feature introduction tutorials
+    - Implement onboarding skip/resume functionality
+    - _Requirements: 5.1, 5.4_
+
+  - [ ] 7.3 Add offline support
     - Implement offline receipt scanning
     - Create data queuing for sync
     - Add offline mode indicators

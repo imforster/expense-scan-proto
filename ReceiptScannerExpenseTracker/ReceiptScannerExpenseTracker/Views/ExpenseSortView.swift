@@ -19,7 +19,7 @@ struct ExpenseSortView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(AppTheme.cardBackgroundColor)
+                .background(AppTheme.Colors.cardBackground)
                 
                 Divider()
                 
@@ -42,7 +42,7 @@ struct ExpenseSortView: View {
                         }
                     }
                 }
-                .background(AppTheme.cardBackgroundColor)
+                .background(AppTheme.Colors.cardBackground)
             }
             .background(Color(UIColor.systemGray6))
             .navigationBarHidden(true)
@@ -88,7 +88,7 @@ struct SortOptionRow: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(AppTheme.cardBackgroundColor)
+            .background(AppTheme.Colors.cardBackground)
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityElement(children: .combine)
