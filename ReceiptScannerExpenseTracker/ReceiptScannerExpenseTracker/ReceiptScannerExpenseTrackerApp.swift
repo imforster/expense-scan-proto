@@ -11,12 +11,13 @@ import SwiftUI
 struct ReceiptScannerExpenseTrackerApp: App {
     @StateObject private var coreDataManager = CoreDataManager.shared
     @StateObject private var themeManager = ThemeManager.shared
-    // @StateObject private var onboardingManager = OnboardingManager.shared
-    
+
     var body: some Scene {
         WindowGroup {
-            ContentView().environment(\.managedObjectContext, coreDataManager.viewContext
-            )
+            ContentView()
+                .environment(\.managedObjectContext, coreDataManager.viewContext)
+                .environmentObject(themeManager)
+                .preferredColorScheme(themeManager.colorScheme)
         }
     }
 }
