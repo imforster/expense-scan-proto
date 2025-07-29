@@ -148,7 +148,7 @@
     - _Requirements: 4.5, 4.6_
 
 - [ ] 7. User Experience Enhancements
-  - [ ] 7.1 Implement light and dark mode settings
+  - [x] 7.1 Implement light and dark mode settings
     - Create ThemeManager service for theme state management
     - Implement theme persistence using UserDefaults
     - Build SettingsView with theme selection UI (Light/Dark/System)
