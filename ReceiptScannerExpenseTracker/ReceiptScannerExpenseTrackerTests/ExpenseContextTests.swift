@@ -7,7 +7,6 @@ class ExpenseContextTests: CoreDataTestCase {
     var viewModel: ExpenseEditViewModel!
     var mockCategoryService: MockCategoryService!
     
-    @MainActor
     override func setUpWithError() throws {
         try super.setUpWithError()
         
@@ -15,7 +14,6 @@ class ExpenseContextTests: CoreDataTestCase {
         viewModel = ExpenseEditViewModel(context: testContext, categoryService: mockCategoryService)
     }
     
-    @MainActor
     override func tearDownWithError() throws {
         viewModel = nil
         mockCategoryService = nil
