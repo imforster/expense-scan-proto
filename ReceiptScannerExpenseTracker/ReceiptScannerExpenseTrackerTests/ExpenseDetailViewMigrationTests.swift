@@ -9,11 +9,13 @@ class ExpenseDetailViewMigrationTests: XCTestCase {
     var coreDataManager: CoreDataManager!
     var viewContext: NSManagedObjectContext!
     
+    @MainActor
     override func setUpWithError() throws {
         coreDataManager = CoreDataManager.createForTesting()
         viewContext = coreDataManager.viewContext
     }
     
+    @MainActor
     override func tearDownWithError() throws {
         viewContext = nil
         coreDataManager = nil
@@ -26,7 +28,7 @@ class ExpenseDetailViewMigrationTests: XCTestCase {
         let expense = createTestExpense()
         
         // Create the view
-        let view = ExpenseDetailView(expenseID: expense.objectID)
+        let view = ExpenseDetailView(expense: expense)
         
         // Since we can't inspect the view directly without ViewInspector, we'll just verify it can be created
         XCTAssertNotNil(view)
