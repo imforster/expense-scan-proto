@@ -2,13 +2,15 @@
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
 
-## User settings
-xcuserdata/
-
-## Xcode workspace user interface state
-*.xcuserstate
+## Xcode user-specific settings and UI state
 **/xcuserdata/
+**/*.xcuserstate
+**/*.xcscmblueprint
 **/UserInterfaceState.xcuserstate
+
+## Xcode debugger breakpoints
+**/xcshareddata/xcdebugger/
+**/*.xcbkptlist
 
 ## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
 *.xcscmblueprint
