@@ -199,7 +199,7 @@ Leverage MCP integrations for:
 |--------|--------|
 | **Spec Completion** | All tasks marked complete |
 | **Build Success** | Clean builds throughout development |
-| **Test Coverage** | Comprehensive test suite included |
+| **Test Coverage** | Comprehensive test suite included and all tests are passing |
 | **Requirements Traceability** | All requirements addressed |
 | **Code Quality** | Follows project standards |
 | **Documentation** | Clear PR description with context |
