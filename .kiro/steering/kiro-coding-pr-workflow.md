@@ -42,6 +42,7 @@ Execute tasks from the spec's `tasks.md`:
 2. Click "Start task" next to specific task items
 3. Let Kiro execute ONE task at a time
 4. Review implementation before proceeding
+5. Ensure we create a feature branch for the associated task
 
 **Key Principles:**
 - Execute tasks sequentially, not in parallel
