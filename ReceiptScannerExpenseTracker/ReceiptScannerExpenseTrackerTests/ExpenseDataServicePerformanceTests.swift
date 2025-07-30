@@ -7,24 +7,24 @@ final class ExpenseDataServicePerformanceTests: CoreDataTestCase {
     
     var expenseDataService: ExpenseDataService!
     
-    override func setUpWithError() async throws {
-        try await super.setUpWithError()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         let expectation = self.expectation(description: "Setup")
-        await MainActor.run {
+        Task { @MainActor in
             self.expenseDataService = ExpenseDataService(context: self.testContext)
             expectation.fulfill()
         }
-        await waitForExpectations(timeout: 1, handler: nil)
+        wait(for: [expectation], timeout: 1)
     }
     
-    override func tearDownWithError() async throws {
+    override func tearDownWithError() throws {
         let expectation = self.expectation(description: "Teardown")
-        await MainActor.run {
+        Task { @MainActor in
             self.expenseDataService = nil
             expectation.fulfill()
         }
-        await waitForExpectations(timeout: 1, handler: nil)
-        try await super.tearDownWithError()
+        wait(for: [expectation], timeout: 1)
+        try super.tearDownWithError()
     }
     
     // MARK: - Performance Tests

@@ -176,71 +176,41 @@ class OCRService: OCRServiceProtocol {
     }
 }
 
-// MARK: - Core ML Receipt Parser (Placeholder)
-// This class simulates the interface to a real Core ML model.
-// Replace this with the actual model loading and prediction logic.
 class ReceiptParser {
-    
-    // In a real implementation, you would load your Core ML model here.
-    // let model = try? ReceiptParserModel(configuration: MLModelConfiguration())
+    private let receiptMLModel = ReceiptMLModel()
     
     func parse(text: String) async throws -> ReceiptData {
-        // This is a placeholder implementation.
-        // A real implementation would pass the text to the Core ML model
-        // and get structured data back.
+        let mlOutput = receiptMLModel.predict(text: text)
         
-        let lines = text.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        // Extract data from ML model output
+        let merchantName = mlOutput["merchantName"] as? String ?? "Unknown Merchant"
+        let totalAmount = (mlOutput["totalAmount"] as? Double).map { Decimal($0) } ?? Decimal.zero
+        let dateString = mlOutput["date"] as? String ?? ""
+        let date = parseDate(dateString) ?? Date()
         
-        // --- Placeholder Logic ---
-        let merchantName = lines.first ?? "Unknown Merchant"
-        let date = Date() // Placeholder
-        let totalAmount = extractTotalAmount(from: lines) ?? Decimal.zero
-        let taxAmount = extractTaxAmount(from: lines)
-        // --- End Placeholder ---
+        // You would further process other extracted fields like tax, items, etc.
+        // For now, we'll keep them as nil or default values.
         
         return ReceiptData(
             merchantName: merchantName,
             date: date,
             totalAmount: totalAmount,
-            taxAmount: taxAmount,
-            items: nil, // Item parsing would also be handled by the model
+            taxAmount: nil, // To be extracted from ML output
+            items: nil, // To be extracted from ML output
             paymentMethod: nil,
             receiptNumber: nil,
             confidence: 0.9 // Placeholder confidence
         )
     }
     
-    // Simplified extraction logic for the placeholder
-    private func extractTotalAmount(from lines: [String]) -> Decimal? {
-        for line in lines.reversed() {
-            if line.lowercased().contains("total") {
-                return extractAmountFromLine(line)
+    private func parseDate(_ dateString: String) -> Date? {
+        let formatters = ["MM/dd/yyyy", "yyyy-MM-dd", "MMM dd, yyyy"]
+        for format in formatters {
+            let formatter = DateFormatter()
+            formatter.dateFormat = format
+            if let date = formatter.date(from: dateString) {
+                return date
             }
-        }
-        return lines.compactMap { extractAmountFromLine($0) }.max()
-    }
-    
-    private func extractTaxAmount(from lines: [String]) -> Decimal? {
-        for line in lines {
-            if line.lowercased().contains("tax") {
-                return extractAmountFromLine(line)
-            }
-        }
-        return nil
-    }
-    
-    private func extractAmountFromLine(_ line: String) -> Decimal? {
-        let pattern = #"[\$€£]?\s*(\d{1,3}(?:[,.]\d{3})*(?:[.,]\d{2})?)"#
-        if let range = line.range(of: pattern, options: .regularExpression) {
-            let amountString = String(line[range])
-                .replacingOccurrences(of: "$", with: "")
-                .replacingOccurrences(of: "€", with: "")
-                .replacingOccurrences(of: "£", with: "")
-                .replacingOccurrences(of: ",", with: ".") // Normalize decimal separator
-                .trimmingCharacters(in: .whitespaces)
-            return Decimal(string: amountString)
         }
         return nil
     }
