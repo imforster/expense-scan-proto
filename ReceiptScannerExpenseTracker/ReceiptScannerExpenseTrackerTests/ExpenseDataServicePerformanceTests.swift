@@ -7,14 +7,24 @@ final class ExpenseDataServicePerformanceTests: CoreDataTestCase {
     
     var expenseDataService: ExpenseDataService!
     
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        expenseDataService = ExpenseDataService(context: testContext)
+    override func setUpWithError() async throws {
+        try await super.setUpWithError()
+        let expectation = self.expectation(description: "Setup")
+        await MainActor.run {
+            self.expenseDataService = ExpenseDataService(context: self.testContext)
+            expectation.fulfill()
+        }
+        await waitForExpectations(timeout: 1, handler: nil)
     }
     
-    override func tearDownWithError() throws {
-        expenseDataService = nil
-        try super.tearDownWithError()
+    override func tearDownWithError() async throws {
+        let expectation = self.expectation(description: "Teardown")
+        await MainActor.run {
+            self.expenseDataService = nil
+            expectation.fulfill()
+        }
+        await waitForExpectations(timeout: 1, handler: nil)
+        try await super.tearDownWithError()
     }
     
     // MARK: - Performance Tests
@@ -76,7 +86,7 @@ final class ExpenseDataServicePerformanceTests: CoreDataTestCase {
         
         // When - Measure filtering performance
         let startTime = CFAbsoluteTimeGetCurrent()
-        await expenseDataService.loadExpenses(with: criteria)
+        await expenseDataService.loadExpenses()
         let endTime = CFAbsoluteTimeGetCurrent()
         
         let executionTime = endTime - startTime

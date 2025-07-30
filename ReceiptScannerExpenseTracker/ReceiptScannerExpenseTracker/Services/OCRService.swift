@@ -118,7 +118,7 @@ class OCRService: OCRServiceProtocol {
     }
 
     // MARK: - Image Pre-processing
-    private func preprocessImage(_ image: UIImage) async -> CGImage? {
+    func preprocessImage(_ image: UIImage) async -> CGImage? {
         guard let ciImage = CIImage(image: image) else { return nil }
         let context = CIContext(options: nil)
 
@@ -143,7 +143,7 @@ class OCRService: OCRServiceProtocol {
     }
     
     // MARK: - Language Detection
-    private func detectLanguages(in image: UIImage) async -> [String] {
+    func detectLanguages(in image: UIImage) async -> [String] {
         guard let cgImage = image.cgImage else { return [] }
         
         return await withCheckedContinuation { continuation in
