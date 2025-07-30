@@ -39,17 +39,21 @@ class CoreDataTestCase: XCTestCase {
         try super.setUpWithError()
         
         // Clean up all entities before each test
-        try cleanupAllEntities()
+        Task { @MainActor in
+            try await cleanupAllEntities()
+        }
     }
     
     override func tearDownWithError() throws {
         // Clean up all entities after each test
-        try cleanupAllEntities()
+        Task { @MainActor in
+            try await cleanupAllEntities()
+        }
         try super.tearDownWithError()
     }
     
     /// Cleans up all entities in the test database
-    private func cleanupAllEntities() throws {
+    private func cleanupAllEntities() async throws {
         let entityNames = ["Category", "Expense", "ExpenseItem", "Receipt", "ReceiptItem", "Tag"]
         
         for entityName in entityNames {
@@ -58,14 +62,14 @@ class CoreDataTestCase: XCTestCase {
             deleteRequest.resultType = .resultTypeObjectIDs
             
             do {
-                let result = try testContext.execute(deleteRequest) as? NSBatchDeleteResult
+                let result = try await testContext.execute(deleteRequest) as? NSBatchDeleteResult
                 if let objectIDs = result?.result as? [NSManagedObjectID] {
                     let changes = [NSDeletedObjectsKey: objectIDs]
                     NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [testContext])
                 }
             } catch {
                 // If batch delete fails, try individual deletion
-                let objects = try testContext.fetch(fetchRequest)
+                let objects = try await testContext.fetch(fetchRequest)
                 for object in objects {
                     if let managedObject = object as? NSManagedObject {
                         testContext.delete(managedObject)
