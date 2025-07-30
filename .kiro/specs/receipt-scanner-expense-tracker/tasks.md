@@ -90,7 +90,7 @@
     - _Requirements: 2.5, 2.6, 2.7_
 
 - [ ] 5. Reporting and Analytics
-  - [ ] 5.1 Implement basic expense reporting
+  - [x] 5.1 Implement basic expense reporting
     - Create reporting service
     - Implement spending summary calculations
     - Build category-based spending analysis
