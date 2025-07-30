@@ -2,20 +2,17 @@ import XCTest
 import CoreData
 @testable import ReceiptScannerExpenseTracker
 
-@MainActor
 class ExpenseContextTests: CoreDataTestCase {
-    var viewModel: ExpenseEditViewModel!
-    var mockCategoryService: MockCategoryService!
+    nonisolated var viewModel: ExpenseEditViewModel!
+    nonisolated var mockCategoryService: TestMockCategoryService!
     
-    @MainActor
     override func setUpWithError() throws {
         try super.setUpWithError()
         
-        mockCategoryService = MockCategoryService()
+        mockCategoryService = TestMockCategoryService(coreDataManager: testCoreDataManager)
         viewModel = ExpenseEditViewModel(context: testContext, categoryService: mockCategoryService)
     }
     
-    @MainActor
     override func tearDownWithError() throws {
         viewModel = nil
         mockCategoryService = nil
@@ -24,6 +21,7 @@ class ExpenseContextTests: CoreDataTestCase {
     
     // MARK: - Expense Context Tests
     
+    @MainActor
     func testToggleExpenseContext() {
         // Given
         XCTAssertTrue(viewModel.expenseContexts.isEmpty)
@@ -43,6 +41,7 @@ class ExpenseContextTests: CoreDataTestCase {
         XCTAssertFalse(viewModel.expenseContexts.contains(.business))
     }
     
+    @MainActor
     func testMultipleExpenseContexts() {
         // When
         viewModel.toggleExpenseContext(.business)
@@ -54,6 +53,7 @@ class ExpenseContextTests: CoreDataTestCase {
         XCTAssertTrue(viewModel.expenseContexts.contains(.reimbursable))
     }
     
+    @MainActor
     func testSaveExpenseWithContexts() async {
         // Given
         viewModel.amount = "25.99"
@@ -80,6 +80,7 @@ class ExpenseContextTests: CoreDataTestCase {
         }
     }
     
+    @MainActor
     func testLoadExpenseWithContexts() {
         // Given
         let expense = createTestExpense()
@@ -87,7 +88,7 @@ class ExpenseContextTests: CoreDataTestCase {
         try! testContext.save()
         
         // When
-        let loadedViewModel = ExpenseEditViewModel(context: testContext, expense: expense)
+        let loadedViewModel = ExpenseEditViewModel(context: testContext, expense: expense, categoryService: mockCategoryService)
         
         // Then
         XCTAssertEqual(loadedViewModel.expenseContexts.count, 2)
@@ -96,13 +97,14 @@ class ExpenseContextTests: CoreDataTestCase {
         XCTAssertEqual(loadedViewModel.notes, "Test notes") // Context tag should be removed from notes
     }
     
+    @MainActor
     func testUpdateExpenseContexts() async {
         // Given
         let expense = createTestExpense()
         expense.notes = "Test notes\n\n[Context: Business]"
         try! testContext.save()
         
-        let loadedViewModel = ExpenseEditViewModel(context: testContext, expense: expense)
+        let loadedViewModel = ExpenseEditViewModel(context: testContext, expense: expense, categoryService: mockCategoryService)
         
         // When
         loadedViewModel.toggleExpenseContext(ExpenseContext.business) // Remove business
@@ -130,6 +132,7 @@ class ExpenseContextTests: CoreDataTestCase {
     
     // MARK: - Helper Methods
     
+    @MainActor
     private func createTestExpense() -> Expense {
         let expense = Expense(context: testContext)
         expense.id = UUID()
