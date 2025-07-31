@@ -147,7 +147,7 @@ struct ImageReviewView: View {
                             
                             // Use as-is button
                             Button(action: {
-                                onConfirm(image)
+                                processAndUseImage()
                             }) {
                                 VStack(spacing: 8) {
                                     Image(systemName: "checkmark")
@@ -207,7 +207,6 @@ struct ImageReviewView: View {
                     ReceiptReviewView(receiptData: receiptData, originalImage: processedImage) {
                         // When receipt is saved, dismiss the entire flow
                         onConfirm(processedImage)
-                        dismiss()
                     }
                 }
             }
@@ -257,18 +256,11 @@ struct ImageReviewView: View {
         isProcessing = true
         
         Task {
-            do {
-                let processedImage = try await imageProcessingService.processReceiptImage(image)
-                await MainActor.run {
-                    isProcessing = false
-                    onConfirm(processedImage)
-                }
-            } catch {
-                await MainActor.run {
-                    isProcessing = false
-                    // If processing fails, use the original image
-                    onConfirm(image)
-                }
+            await MainActor.run {
+                self.extractedReceiptData = ReceiptData(id: UUID(), items: [], total: 0, date: Date(), merchantName: nil, category: nil, paymentMethod: nil, currency: nil, notes: nil)
+                self.processedImage = image
+                self.isProcessing = false
+                self.showReceiptReview = true
             }
         }
     }
