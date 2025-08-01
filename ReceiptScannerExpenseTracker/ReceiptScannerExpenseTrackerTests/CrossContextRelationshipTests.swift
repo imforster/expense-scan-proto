@@ -10,22 +10,25 @@ class CrossContextRelationshipTests: CoreDataTestCase {
     
     override func setUpWithError() throws {
         try super.setUpWithError()
-        
-        // Use the shared test Core Data manager
-        mainContext = testContext
-        
-        // Create a secondary context that shares the same persistent store coordinator
-        secondaryContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        secondaryContext.persistentStoreCoordinator = testCoreDataManager.container.persistentStoreCoordinator
-        
-        // Initialize view model with the main context
-        viewModel = ExpenseEditViewModel(context: mainContext)
+        DispatchQueue.main.async {
+            // Use the shared test Core Data manager
+            self.mainContext = self.testContext
+            
+            // Create a secondary context that shares the same persistent store coordinator
+            self.secondaryContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+            self.secondaryContext.persistentStoreCoordinator = self.testCoreDataManager.container.persistentStoreCoordinator
+            
+            // Initialize view model with the main context
+            self.viewModel = ExpenseEditViewModel(context: self.mainContext)
+        }
     }
     
     override func tearDownWithError() throws {
-        viewModel = nil
-        mainContext = nil
-        secondaryContext = nil
+        DispatchQueue.main.async {
+            self.viewModel = nil
+            self.mainContext = nil
+            self.secondaryContext = nil
+        }
         try super.tearDownWithError()
     }
     

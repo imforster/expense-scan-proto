@@ -28,7 +28,8 @@ class ExpenseDetailViewMigrationTests: XCTestCase {
         let expense = createTestExpense()
         
         // Create the view
-        let view = ExpenseDetailView(expense: expense)
+        let viewModel = ReceiptScannerExpenseTracker.ExpenseDetailViewModel(dataService: ExpenseDataService(context: viewContext), expenseID: expense.objectID)
+        let view = ExpenseDetailView(expense: viewModel.expense!)
         
         // Since we can't inspect the view directly without ViewInspector, we'll just verify it can be created
         XCTAssertNotNil(view)
@@ -123,7 +124,7 @@ class ExpenseDetailViewMigrationTests: XCTestCase {
         
         // Create a scope to control the lifetime of the view model
         do {
-            let viewModel = ExpenseDetailViewModel(dataService: ExpenseDataService(context: viewContext), expenseID: expense.objectID)
+            let viewModel = ReceiptScannerExpenseTracker.ExpenseDetailViewModel(dataService: ExpenseDataService(context: viewContext), expenseID: expense.objectID)
             weakViewModel = viewModel
             
             // Use the view model

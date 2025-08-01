@@ -10,7 +10,7 @@ class ThemeManager: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private let themeKey = "selected_theme"
     
-    private init() {
+    init() {
         loadTheme()
         updateColorScheme()
     }

@@ -8,14 +8,17 @@ class ExpenseContextTests: CoreDataTestCase {
     
     override func setUpWithError() throws {
         try super.setUpWithError()
-        
-        mockCategoryService = TestMockCategoryService(coreDataManager: testCoreDataManager)
-        viewModel = ExpenseEditViewModel(context: testContext, categoryService: mockCategoryService)
+        DispatchQueue.main.async {
+            self.mockCategoryService = TestMockCategoryService(coreDataManager: self.testCoreDataManager)
+            self.viewModel = ExpenseEditViewModel(context: self.testContext, categoryService: self.mockCategoryService)
+        }
     }
     
     override func tearDownWithError() throws {
-        viewModel = nil
-        mockCategoryService = nil
+        DispatchQueue.main.async {
+            self.viewModel = nil
+            self.mockCategoryService = nil
+        }
         try super.tearDownWithError()
     }
     
