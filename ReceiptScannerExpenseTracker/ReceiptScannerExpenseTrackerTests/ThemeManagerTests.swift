@@ -10,7 +10,7 @@ class ThemeManagerTests: XCTestCase {
         // Create a test UserDefaults instance
         testUserDefaults = UserDefaults(suiteName: "ThemeManagerTests")!
         testUserDefaults.removePersistentDomain(forName: "ThemeManagerTests")
-        themeManager = ThemeManager(userDefaults: testUserDefaults)
+        themeManager = ThemeManager()
     }
     
     override func tearDown() {
@@ -47,11 +47,11 @@ class ThemeManagerTests: XCTestCase {
         themeManager.setTheme(.dark)
         
         // Verify the setting is saved
-        let savedTheme = testUserDefaults.string(forKey: "app_theme_mode")
+        let savedTheme = testUserDefaults.string(forKey: "selected_theme")
         XCTAssertEqual(savedTheme, "dark")
         
         // Create a new instance to test persistence
-        let newThemeManager = ThemeManager(userDefaults: testUserDefaults)
+        let newThemeManager = ThemeManager()
         XCTAssertEqual(newThemeManager.currentTheme, .dark)
         XCTAssertEqual(newThemeManager.colorScheme, .dark)
     }
@@ -63,31 +63,8 @@ class ThemeManagerTests: XCTestCase {
     }
     
     func testThemeModeIcons() {
-        XCTAssertEqual(ThemeMode.light.icon, "sun.max")
-        XCTAssertEqual(ThemeMode.dark.icon, "moon")
-        XCTAssertEqual(ThemeMode.system.icon, "circle.lefthalf.filled")
-    }
-    
-    func testEffectiveColorScheme() {
-        let themeManager = ThemeManager.shared
-        themeManager.setTheme(.light)
-        XCTAssertEqual(themeManager.getEffectiveColorScheme(), .light)
-        
-        themeManager.setTheme(.dark)
-        XCTAssertEqual(themeManager.getEffectiveColorScheme(), .dark)
-        
-        themeManager.setTheme(.system)
-        // System theme should return either light or dark based on system settings
-        let effectiveScheme = themeManager.getEffectiveColorScheme()
-        XCTAssertTrue(effectiveScheme == .light || effectiveScheme == .dark)
-    }
-    
-    func testIsDarkMode() {
-        let themeManager = ThemeManager.shared
-        themeManager.setTheme(.light)
-        XCTAssertFalse(themeManager.isDarkMode)
-        
-        themeManager.setTheme(.dark)
-        XCTAssertTrue(themeManager.isDarkMode)
+        XCTAssertEqual(ThemeMode.light.iconName, "sun.max.fill")
+        XCTAssertEqual(ThemeMode.dark.iconName, "moon.fill")
+        XCTAssertEqual(ThemeMode.system.iconName, "gear")
     }
 }

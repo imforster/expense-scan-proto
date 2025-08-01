@@ -11,26 +11,29 @@ final class ExpenseDataServiceTests: XCTestCase {
     
     override func setUp() async throws {
         try await super.setUp()
-        
-        // Set up in-memory Core Data stack for testing
-        coreDataManager = CoreDataManager.shared
-        
-        let description = NSPersistentStoreDescription()
-        description.type = NSInMemoryStoreType
-        description.shouldAddStoreAsynchronously = false
-        
-        coreDataManager.setPersistentStoreDescriptions([description])
-        
-        testContext = coreDataManager.viewContext
-        dataService = ExpenseDataService(context: testContext)
+        DispatchQueue.main.async {
+            // Set up in-memory Core Data stack for testing
+            self.coreDataManager = CoreDataManager.shared
+            
+            let description = NSPersistentStoreDescription()
+            description.type = NSInMemoryStoreType
+            description.shouldAddStoreAsynchronously = false
+            
+            self.coreDataManager.setPersistentStoreDescriptions([description])
+            
+            self.testContext = self.coreDataManager.viewContext
+            self.dataService = ExpenseDataService(context: self.testContext)
+        }
         
         // Create test categories
         await createTestCategories()
     }
     
     override func tearDown() async throws {
-        dataService = nil
-        testContext = nil
+        DispatchQueue.main.async {
+            self.dataService = nil
+            self.testContext = nil
+        }
         try await super.tearDown()
     }
     
