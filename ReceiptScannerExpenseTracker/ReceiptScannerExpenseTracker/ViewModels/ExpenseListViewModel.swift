@@ -50,7 +50,7 @@ class ExpenseListViewModel: ObservableObject {
     private let dataService: ExpenseDataService
     private let filterService: ExpenseFilterService
     private let sortService: ExpenseSortService
-    private var cancellables = Set<AnyCancellable>()
+    internal var cancellables = Set<AnyCancellable>()
     private var lastCoreDataChangeTime: Date = Date.distantPast
     private var sortDebounceTask: Task<Void, Never>?
     private let changeDebounceInterval: TimeInterval = 0.2 // 200ms debounce
