@@ -97,7 +97,7 @@
     - Add time period comparison functionality
     - _Requirements: 3.1, 3.3, 3.4_
 
-  - [ ] 5.2 Build data visualization components
+  - [-] 5.2 Build data visualization components
     - Create reusable chart components (bar, pie, line)
     - Implement spending trend visualization
     - Add interactive elements to charts
