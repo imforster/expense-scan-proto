@@ -257,7 +257,16 @@ struct ImageReviewView: View {
         
         Task {
             await MainActor.run {
-                self.extractedReceiptData = ReceiptData(id: UUID(), items: [], total: 0, date: Date(), merchantName: nil, category: nil, paymentMethod: nil, currency: nil, notes: nil)
+                self.extractedReceiptData = ReceiptData(
+                    merchantName: "Unknown Merchant",
+                    date: Date(),
+                    totalAmount: 0.0,
+                    taxAmount: nil,
+                    items: nil,
+                    paymentMethod: nil,
+                    receiptNumber: nil,
+                    confidence: 0.0
+                )
                 self.processedImage = image
                 self.isProcessing = false
                 self.showReceiptReview = true
