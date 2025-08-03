@@ -89,6 +89,53 @@
     - Add unit tests for expense editing and management
     - _Requirements: 2.5, 2.6, 2.7_
 
+  - [ ] 4.4 Create summary data model and basic calculations
+    - Create `ExpenseListViewModel+Summaries.swift` extension file
+    - Define `SummaryData` struct with title, amount, and trend properties
+    - Add basic summary calculation method to compute current month total
+    - Expose summary data via @Published property in ExpenseListViewModel
+    - Initialize summary data with default/empty values to maintain app functionality
+    - Ensure existing ExpenseListView continues to work without UI changes
+    - Write unit tests for SummaryData struct initialization and basic calculations
+    - **Quality Gates**: ALL TESTS MUST PASS, code builds successfully without warnings
+    - Verify app builds and runs successfully with new summary infrastructure
+    - _Requirements: 2.4, 3.1_
+
+  - [ ] 4.5 Implement trend calculations for summary cards
+    - Add method to calculate previous month totals
+    - Implement percentage change calculation between current and previous months
+    - Handle edge cases for zero amounts and first month scenarios
+    - Update existing summary data calculations to include trend information
+    - Ensure summary data updates correctly without breaking existing functionality
+    - Add unit tests for trend calculation logic
+    - **Quality Gates**: ALL TESTS MUST PASS, implementation meets all task requirements
+    - Verify app continues to function properly with enhanced calculations
+    - _Requirements: 3.1, 3.3_
+
+  - [ ] 4.6 Update ExpenseListView with summary cards display
+    - Add horizontal scroll view for summary cards above the expense list
+    - Integrate ExpenseSummaryCard components with real data from summary calculations
+    - Ensure proper spacing and layout for summary cards section
+    - Add loading states for summary data
+    - Maintain all existing ExpenseListView functionality (search, filters, sorting)
+    - Ensure smooth scrolling and performance with new summary section
+    - Test that existing expense list interactions continue to work properly
+    - Write unit tests for UI integration and data binding
+    - **Quality Gates**: Code follows project conventions, feature functionality verified manually
+    - Verify complete app functionality after UI integration
+    - _Requirements: 2.4, 3.1_
+
+  - [ ] 4.7 Add comprehensive unit tests for summary functionality
+    - Write unit tests for SummaryData struct and calculations
+    - Test edge cases for trend calculations (zero amounts, missing data)
+    - Add integration tests for summary data in ExpenseListViewModel
+    - Verify summary card display updates correctly with data changes
+    - Test that summary functionality doesn't interfere with existing features
+    - Ensure all existing ExpenseListView tests continue to pass
+    - **Quality Gates**: Comprehensive test suite included and all tests passing
+    - Verify complete app functionality with comprehensive test coverage
+    - _Requirements: 2.4, 3.1, 3.3_
+
 - [ ] 5. Reporting and Analytics
   - [x] 5.1 Implement basic expense reporting
     - Create reporting service
@@ -97,7 +144,7 @@
     - Add time period comparison functionality
     - _Requirements: 3.1, 3.3, 3.4_
 
-  - [ ] 5.2 Build data visualization components
+  - [x] 5.2 Build data visualization components
     - Create reusable chart components (bar, pie, line)
     - Implement spending trend visualization
     - Add interactive elements to charts
@@ -126,21 +173,21 @@
     - Write unit tests for authentication flow
     - _Requirements: 4.2_
 
-  - [x] 6.2 Set up data encryption
+  - [ ] 6.2 Set up data encryption
     - Implement encryption for sensitive data
     - Create secure storage service
     - Add encryption key management
     - Write unit tests for encryption/decryption
     - _Requirements: 4.1_
 
-  - [x] 6.3 Implement CloudKit integration
+  - [ ] 6.3 Implement CloudKit integration
     - Set up CloudKit container and schema
     - Create sync service for data synchronization
     - Implement conflict resolution strategies
     - Add background sync functionality
     - _Requirements: 4.3, 4.4_
 
-  - [x] 6.4 Add data management features
+  - [ ] 6.4 Add data management features
     - Implement data backup functionality
     - Create data restoration flow
     - Build data deletion options
