@@ -5,7 +5,7 @@ struct ImageReviewView: View {
     let image: UIImage
     let onConfirm: (UIImage) -> Void
     let onRetake: () -> Void
-    
+
     @Environment(\.dismiss) private var dismiss
     @State private var imageScale: CGFloat = 1.0
     @State private var imageOffset: CGSize = .zero
@@ -17,15 +17,15 @@ struct ImageReviewView: View {
     @State private var processedImage: UIImage?
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
     @StateObject private var imageProcessingService = ImageProcessingService.shared
     private let ocrService = OCRService()
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 Color.black.ignoresSafeArea()
-                
+
                 // Image display with zoom and pan
                 GeometryReader { geometry in
                     Image(uiImage: image)
@@ -51,7 +51,7 @@ struct ImageReviewView: View {
                                             }
                                         }
                                     },
-                                
+
                                 DragGesture()
                                     .onChanged { value in
                                         if imageScale > 1.0 {
@@ -79,7 +79,7 @@ struct ImageReviewView: View {
                         }
                 }
                 .clipped()
-                
+
                 // Instructions overlay
                 VStack {
                     HStack {
@@ -87,19 +87,19 @@ struct ImageReviewView: View {
                             Text("Review Your Receipt")
                                 .font(.headline)
                                 .foregroundColor(.white)
-                            
+
                             Text("Double-tap to zoom • Pinch to scale")
                                 .font(.caption)
                                 .foregroundColor(.white.opacity(0.7))
                         }
-                        
+
                         Spacer()
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    
+
                     Spacer()
-                    
+
                     // Action buttons
                     if !isProcessing {
                         HStack(spacing: 20) {
@@ -112,7 +112,7 @@ struct ImageReviewView: View {
                                     Image(systemName: "camera.rotate")
                                         .font(.system(size: 24, weight: .medium))
                                         .foregroundColor(.white)
-                                    
+
                                     Text("Retake")
                                         .font(.caption)
                                         .foregroundColor(.white)
@@ -123,7 +123,7 @@ struct ImageReviewView: View {
                                 .cornerRadius(12)
                             }
                             .accessibilityLabel("Retake photo")
-                            
+
                             // Process & Extract button
                             Button(action: {
                                 processAndExtractReceipt()
@@ -132,7 +132,7 @@ struct ImageReviewView: View {
                                     Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 24, weight: .medium))
                                         .foregroundColor(.white)
-                                    
+
                                     Text("Extract Data")
                                         .font(.caption)
                                         .fontWeight(.medium)
@@ -144,7 +144,7 @@ struct ImageReviewView: View {
                                 .cornerRadius(12)
                             }
                             .accessibilityLabel("Process and extract receipt data")
-                            
+
                             // Use as-is button
                             Button(action: {
                                 processAndUseImage()
@@ -153,7 +153,7 @@ struct ImageReviewView: View {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 24, weight: .medium))
                                         .foregroundColor(.white)
-                                    
+
                                     Text("Use As-Is")
                                         .font(.caption)
                                         .foregroundColor(.white)
@@ -172,12 +172,12 @@ struct ImageReviewView: View {
                             ProgressView(value: imageProcessingService.processingProgress)
                                 .progressViewStyle(LinearProgressViewStyle(tint: .white))
                                 .frame(width: 200)
-                            
+
                             VStack(spacing: 4) {
                                 Text("Processing Image...")
                                     .font(.headline)
                                     .foregroundColor(.white)
-                                
+
                                 Text(imageProcessingService.processingStatus)
                                     .font(.caption)
                                     .foregroundColor(.white.opacity(0.8))
@@ -203,7 +203,8 @@ struct ImageReviewView: View {
             }
             .sheet(isPresented: $showReceiptReview) {
                 if let receiptData = extractedReceiptData,
-                   let processedImage = processedImage {
+                    let processedImage = processedImage
+                {
                     ReceiptReviewView(receiptData: receiptData, originalImage: processedImage) {
                         // When receipt is saved, dismiss the entire flow
                         onConfirm(processedImage)
@@ -211,30 +212,30 @@ struct ImageReviewView: View {
                 }
             }
             .alert("Processing Error", isPresented: $showError) {
-                Button("OK") { }
+                Button("OK") {}
             } message: {
                 Text(errorMessage)
             }
         }
     }
-    
+
     // MARK: - Private Methods
-    
+
     /// Processes the image and extracts receipt data using OCR
     private func processAndExtractReceipt() {
         isProcessing = true
-        
+
         Task {
             do {
                 // First, process the image for better OCR results
                 let processedImage = try await imageProcessingService.processReceiptImage(image)
-                
+
                 // Extract text using OCR
                 let extractedText = try await ocrService.extractTextFromImage(processedImage)
-                
+
                 // Parse the extracted text into structured receipt data
                 let receiptData = try await ocrService.parseReceiptData(extractedText)
-                
+
                 await MainActor.run {
                     self.processedImage = processedImage
                     self.extractedReceiptData = receiptData
@@ -244,17 +245,18 @@ struct ImageReviewView: View {
             } catch {
                 await MainActor.run {
                     self.isProcessing = false
-                    self.errorMessage = "Failed to extract receipt data: \(error.localizedDescription)"
+                    self.errorMessage =
+                        "Failed to extract receipt data: \(error.localizedDescription)"
                     self.showError = true
                 }
             }
         }
     }
-    
+
     /// Processes the image and confirms it for use
     private func processAndUseImage() {
         isProcessing = true
-        
+
         Task {
             do {
                 let processedImage = try await imageProcessingService.processReceiptImage(image)
@@ -281,6 +283,6 @@ struct ImageReviewView: View {
     ImageReviewView(
         image: UIImage(systemName: "doc.text") ?? UIImage(),
         onConfirm: { _ in },
-        onRetake: { }
+        onRetake: {}
     )
 }

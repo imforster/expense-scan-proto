@@ -89,7 +89,7 @@
     - Add unit tests for expense editing and management
     - _Requirements: 2.5, 2.6, 2.7_
 
-  - [ ] 4.4 Create summary data model and basic calculations
+  - [x] 4.4 Create summary data model and basic calculations
     - Create `ExpenseListViewModel+Summaries.swift` extension file
     - Define `SummaryData` struct with title, amount, and trend properties
     - Add basic summary calculation method to compute current month total
@@ -101,7 +101,7 @@
     - Verify app builds and runs successfully with new summary infrastructure
     - _Requirements: 2.4, 3.1_
 
-  - [ ] 4.5 Implement trend calculations for summary cards
+  - [x] 4.5 Implement trend calculations for summary cards
     - Add method to calculate previous month totals
     - Implement percentage change calculation between current and previous months
     - Handle edge cases for zero amounts and first month scenarios
@@ -112,17 +112,17 @@
     - Verify app continues to function properly with enhanced calculations
     - _Requirements: 3.1, 3.3_
 
-  - [ ] 4.6 Update ExpenseListView with summary cards display
-    - Add horizontal scroll view for summary cards above the expense list
-    - Integrate ExpenseSummaryCard components with real data from summary calculations
-    - Ensure proper spacing and layout for summary cards section
-    - Add loading states for summary data
-    - Maintain all existing ExpenseListView functionality (search, filters, sorting)
-    - Ensure smooth scrolling and performance with new summary section
-    - Test that existing expense list interactions continue to work properly
-    - Write unit tests for UI integration and data binding
+  - [ ] 4.6 Update dashboard home view with real summary data
+    - Update ExpenseSummaryCard to work with SummaryData model instead of raw parameters
+    - Replace sample data in ContentView homeView with real summary calculations
+    - Integrate ExpenseListViewModel summary data into dashboard display
+    - Add loading states for summary data on dashboard
+    - Ensure summary cards update when expense data changes
+    - Add proper data binding between dashboard and expense data
+    - Test that dashboard summary reflects actual expense data
+    - Write unit tests for dashboard data integration
     - **Quality Gates**: Code follows project conventions, feature functionality verified manually
-    - Verify complete app functionality after UI integration
+    - Verify dashboard shows accurate real-time expense summaries
     - _Requirements: 2.4, 3.1_
 
   - [ ] 4.7 Add comprehensive unit tests for summary functionality
@@ -150,6 +150,20 @@
     - Add interactive elements to charts
     - Write unit tests for data transformation
     - _Requirements: 3.2, 3.3_
+
+  - [ ] 5.2.1 Create comprehensive reports view
+    - Build ReportsView to replace placeholder in ContentView
+    - Integrate existing chart components (bar, pie, line charts)
+    - Add time period selection (weekly, monthly, yearly)
+    - Implement category-based spending breakdowns
+    - Add spending trend analysis with visual charts
+    - Create interactive report filtering and customization
+    - Integrate with ExpenseReportingService for data
+    - Add proper loading states and error handling
+    - Write unit tests for reports view functionality
+    - **Quality Gates**: All chart components integrated, reports display real data
+    - Verify reports accurately reflect expense data with proper visualizations
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
   - [ ] 5.3 Implement report export functionality
     - Create export service for different formats (PDF, CSV)
