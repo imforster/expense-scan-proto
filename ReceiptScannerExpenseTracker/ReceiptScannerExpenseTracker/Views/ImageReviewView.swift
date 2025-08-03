@@ -258,20 +258,22 @@ struct ImageReviewView: View {
         isProcessing = true
 
         Task {
-            await MainActor.run {
-                self.extractedReceiptData = ReceiptData(
-                    merchantName: "Unknown Merchant",
-                    date: Date(),
-                    totalAmount: 0.0,
-                    taxAmount: nil,
-                    items: nil,
-                    paymentMethod: nil,
-                    receiptNumber: nil,
-                    confidence: 0.0
-                )
-                self.processedImage = image
-                self.isProcessing = false
-                self.showReceiptReview = true
+            do {
+                let processedImage = try await imageProcessingService.processReceiptImage(image)
+                await MainActor.run {
+                    self.processedImage = processedImage
+    
+                    self.extractedReceiptData =  ReceiptData(merchantName: "Manual Entry", date: Date(), totalAmount: 0, taxAmount: nil,
+                        items: [], paymentMethod: nil, receiptNumber: nil, confidence: 0.0)
+                    isProcessing = false
+                    self.showReceiptReview = true
+                }
+            } catch {
+                await MainActor.run {
+                    isProcessing = false
+                    // If processing fails, use the original image
+                    onConfirm(image)
+                }
             }
         }
     }

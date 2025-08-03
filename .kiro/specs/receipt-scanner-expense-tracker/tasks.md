@@ -187,21 +187,21 @@
     - Write unit tests for authentication flow
     - _Requirements: 4.2_
 
-  - [x] 6.2 Set up data encryption
+  - [ ] 6.2 Set up data encryption
     - Implement encryption for sensitive data
     - Create secure storage service
     - Add encryption key management
     - Write unit tests for encryption/decryption
     - _Requirements: 4.1_
 
-  - [x] 6.3 Implement CloudKit integration
+  - [ ] 6.3 Implement CloudKit integration
     - Set up CloudKit container and schema
     - Create sync service for data synchronization
     - Implement conflict resolution strategies
     - Add background sync functionality
     - _Requirements: 4.3, 4.4_
 
-  - [x] 6.4 Add data management features
+  - [ ] 6.4 Add data management features
     - Implement data backup functionality
     - Create data restoration flow
     - Build data deletion options
