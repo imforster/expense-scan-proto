@@ -131,16 +131,16 @@ struct ImageReviewView: View {
                                 VStack(spacing: 8) {
                                     Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 24, weight: .medium))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.white)
 
                                     Text("Extract Data")
                                         .font(.caption)
                                         .fontWeight(.medium)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.white)
                                 }
                                 .padding(.vertical, 12)
                                 .padding(.horizontal, 16)
-                                .background(AppTheme.Colors.cardBackground)
+                                .background(Color.black.opacity(0.6))
                                 .cornerRadius(12)
                             }
                             .accessibilityLabel("Process and extract receipt data")
