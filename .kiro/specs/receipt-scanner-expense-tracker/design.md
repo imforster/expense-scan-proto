@@ -4,6 +4,13 @@
 
 The Receipt Scanner Expense Tracker is an iOS application built with Swift that allows users to scan receipts using their device's camera, extract relevant information, categorize expenses, and generate reports. The app aims to simplify expense tracking by minimizing manual data entry and providing insightful analytics on spending patterns.
 
+**Key Design Principles:**
+- **Accessibility First**: Full support for iOS accessibility features including VoiceOver, Dynamic Type, and reduced motion
+- **Offline Capability**: Core functionality available without internet connection, with background sync when online
+- **Security by Design**: End-to-end encryption for sensitive financial data with biometric authentication
+- **Progressive Enhancement**: Graceful degradation when OCR confidence is low, with manual input fallbacks
+- **Performance Optimized**: Efficient image processing and database operations to minimize battery usage
+
 ## Architecture
 
 The application will follow the MVVM (Model-View-ViewModel) architecture pattern to ensure separation of concerns, testability, and maintainability. Additionally, we'll incorporate the Coordinator pattern for navigation flow management.
@@ -53,18 +60,18 @@ graph TD
 ### UI Components
 
 1. **Main Tab Structure**
-   - Home/Dashboard
+   - Home/Dashboard (with prominent scan receipt option per Requirement 1.1)
    - Scan Receipt
    - Expenses List
    - Reports
    - Settings
 
 2. **Receipt Scanning Flow**
-   - Camera View
-   - Processing Overlay
-   - Data Extraction Review
-   - Category Selection
-   - Confirmation
+   - Camera View (with permission handling per Requirement 1.2)
+   - Processing Overlay (image optimization per Requirement 1.3)
+   - Data Extraction Review (with confidence highlighting per Requirement 1.6)
+   - Category Selection (with intelligent suggestions per Requirement 2.1)
+   - Confirmation (with field editing capability per Requirement 1.7)
 
 3. **Expense Management**
    - List View with Filtering
@@ -147,6 +154,20 @@ protocol OfflineServiceProtocol {
     func getPendingSyncCount() -> Int
 }
 ```
+
+#### Notification Service
+
+```swift
+protocol NotificationServiceProtocol {
+    func requestNotificationPermission() async -> Bool
+    func scheduleBudgetAlert(_ alert: BudgetAlert) async throws
+    func cancelBudgetAlert(for category: Category?) async
+    func scheduleRecurringExpenseReminder(_ expense: Expense) async throws
+    func sendImmediateBudgetNotification(_ alert: BudgetAlert) async throws
+}
+```
+
+**Design Rationale**: The notification service is essential for budget tracking (Requirement 3.6) and provides proactive financial management. It integrates with iOS UserNotifications framework to deliver timely alerts when users approach or exceed budget limits, supporting both immediate and scheduled notifications.
 
 ## Data Models
 
@@ -475,19 +496,30 @@ enum AppError: Error {
 ## Security Considerations
 
 1. **Data Protection**
-   - On-device encryption for receipt data
-   - Secure storage of financial information
-   - Privacy-first approach to data collection
+   - On-device encryption for receipt data using iOS Data Protection API
+   - Secure storage of financial information in encrypted Core Data store
+   - Privacy-first approach to data collection with minimal data retention
+   - Compliance with financial data regulations for business expense handling
 
 2. **Authentication**
-   - Biometric authentication option
-   - Secure app lock
-   - Session management
+   - Biometric authentication (Face ID/Touch ID) required on app launch (Requirement 4.2)
+   - Secure app lock with configurable timeout
+   - Session management with automatic logout
+   - Fallback to device passcode when biometrics unavailable
 
 3. **Cloud Security**
-   - Encrypted data transmission
-   - Secure CloudKit implementation
-   - User data isolation
+   - End-to-end encrypted data transmission using CloudKit's security features
+   - Secure CloudKit implementation with user data isolation
+   - Optional cloud backup with user consent (Requirement 4.3)
+   - Secure transmission protocols (TLS 1.3) for all network communications
+
+4. **Data Management**
+   - Granular data deletion options (selective or complete removal per Requirement 4.5)
+   - Secure data export with encryption options
+   - Audit trail for sensitive operations
+   - Regular security key rotation for encrypted storage
+
+**Design Rationale**: Security is paramount for financial applications. The multi-layered approach ensures data protection at rest and in transit, while providing users control over their data. Biometric authentication provides convenience without compromising security, and the optional cloud sync respects user privacy preferences.
 
 ## Implementation Approach
 

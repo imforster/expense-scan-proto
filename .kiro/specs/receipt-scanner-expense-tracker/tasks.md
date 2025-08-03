@@ -89,6 +89,53 @@
     - Add unit tests for expense editing and management
     - _Requirements: 2.5, 2.6, 2.7_
 
+  - [x] 4.4 Create summary data model and basic calculations
+    - Create `ExpenseListViewModel+Summaries.swift` extension file
+    - Define `SummaryData` struct with title, amount, and trend properties
+    - Add basic summary calculation method to compute current month total
+    - Expose summary data via @Published property in ExpenseListViewModel
+    - Initialize summary data with default/empty values to maintain app functionality
+    - Ensure existing ExpenseListView continues to work without UI changes
+    - Write unit tests for SummaryData struct initialization and basic calculations
+    - **Quality Gates**: ALL TESTS MUST PASS, code builds successfully without warnings
+    - Verify app builds and runs successfully with new summary infrastructure
+    - _Requirements: 2.4, 3.1_
+
+  - [x] 4.5 Implement trend calculations for summary cards
+    - Add method to calculate previous month totals
+    - Implement percentage change calculation between current and previous months
+    - Handle edge cases for zero amounts and first month scenarios
+    - Update existing summary data calculations to include trend information
+    - Ensure summary data updates correctly without breaking existing functionality
+    - Add unit tests for trend calculation logic
+    - **Quality Gates**: ALL TESTS MUST PASS, implementation meets all task requirements
+    - Verify app continues to function properly with enhanced calculations
+    - _Requirements: 3.1, 3.3_
+
+  - [ ] 4.6 Update dashboard home view with real summary data
+    - Update ExpenseSummaryCard to work with SummaryData model instead of raw parameters
+    - Replace sample data in ContentView homeView with real summary calculations
+    - Integrate ExpenseListViewModel summary data into dashboard display
+    - Add loading states for summary data on dashboard
+    - Ensure summary cards update when expense data changes
+    - Add proper data binding between dashboard and expense data
+    - Test that dashboard summary reflects actual expense data
+    - Write unit tests for dashboard data integration
+    - **Quality Gates**: Code follows project conventions, feature functionality verified manually
+    - Verify dashboard shows accurate real-time expense summaries
+    - _Requirements: 2.4, 3.1_
+
+  - [ ] 4.7 Add comprehensive unit tests for summary functionality
+    - Write unit tests for SummaryData struct and calculations
+    - Test edge cases for trend calculations (zero amounts, missing data)
+    - Add integration tests for summary data in ExpenseListViewModel
+    - Verify summary card display updates correctly with data changes
+    - Test that summary functionality doesn't interfere with existing features
+    - Ensure all existing ExpenseListView tests continue to pass
+    - **Quality Gates**: Comprehensive test suite included and all tests passing
+    - Verify complete app functionality with comprehensive test coverage
+    - _Requirements: 2.4, 3.1, 3.3_
+
 - [ ] 5. Reporting and Analytics
   - [x] 5.1 Implement basic expense reporting
     - Create reporting service
@@ -97,12 +144,26 @@
     - Add time period comparison functionality
     - _Requirements: 3.1, 3.3, 3.4_
 
-  - [-] 5.2 Build data visualization components
+  - [x] 5.2 Build data visualization components
     - Create reusable chart components (bar, pie, line)
     - Implement spending trend visualization
     - Add interactive elements to charts
     - Write unit tests for data transformation
     - _Requirements: 3.2, 3.3_
+
+  - [ ] 5.2.1 Create comprehensive reports view
+    - Build ReportsView to replace placeholder in ContentView
+    - Integrate existing chart components (bar, pie, line charts)
+    - Add time period selection (weekly, monthly, yearly)
+    - Implement category-based spending breakdowns
+    - Add spending trend analysis with visual charts
+    - Create interactive report filtering and customization
+    - Integrate with ExpenseReportingService for data
+    - Add proper loading states and error handling
+    - Write unit tests for reports view functionality
+    - **Quality Gates**: All chart components integrated, reports display real data
+    - Verify reports accurately reflect expense data with proper visualizations
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
   - [ ] 5.3 Implement report export functionality
     - Create export service for different formats (PDF, CSV)
