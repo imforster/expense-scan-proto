@@ -131,16 +131,16 @@ struct ImageReviewView: View {
                                 VStack(spacing: 8) {
                                     Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 24, weight: .medium))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.white)
                                     
                                     Text("Extract Data")
                                         .font(.caption)
                                         .fontWeight(.medium)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.white)
                                 }
                                 .padding(.vertical, 12)
                                 .padding(.horizontal, 16)
-                                .background(AppTheme.Colors.cardBackground)
+                                .background(Color.black.opacity(0.6))
                                 .cornerRadius(12)
                             }
                             .accessibilityLabel("Process and extract receipt data")
@@ -256,20 +256,22 @@ struct ImageReviewView: View {
         isProcessing = true
         
         Task {
-            await MainActor.run {
-                self.extractedReceiptData = ReceiptData(
-                    merchantName: "Unknown Merchant",
-                    date: Date(),
-                    totalAmount: Decimal(0),
-                    taxAmount: nil,
-                    items: [],
-                    paymentMethod: nil,
-                    receiptNumber: nil,
-                    confidence: 0.0
-                )
-                self.processedImage = image
-                self.isProcessing = false
-                self.showReceiptReview = true
+            do {
+                let processedImage = try await imageProcessingService.processReceiptImage(image)
+                await MainActor.run {
+                    self.processedImage = processedImage
+    
+                    self.extractedReceiptData =  ReceiptData(merchantName: "Manual Entry", date: Date(), totalAmount: 0, taxAmount: nil,
+                        items: [], paymentMethod: nil, receiptNumber: nil, confidence: 0.0)
+                    isProcessing = false
+                    self.showReceiptReview = true
+                }
+            } catch {
+                await MainActor.run {
+                    isProcessing = false
+                    // If processing fails, use the original image
+                    onConfirm(image)
+                }
             }
         }
     }
