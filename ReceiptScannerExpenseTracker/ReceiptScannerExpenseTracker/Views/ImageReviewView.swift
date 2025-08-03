@@ -131,23 +131,23 @@ struct ImageReviewView: View {
                                 VStack(spacing: 8) {
                                     Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 24, weight: .medium))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.white)
                                     
                                     Text("Extract Data")
                                         .font(.caption)
                                         .fontWeight(.medium)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.white)
                                 }
                                 .padding(.vertical, 12)
                                 .padding(.horizontal, 16)
-                                .background(AppTheme.cardBackgroundColor)
+                                .background(Color.black.opacity(0.6))
                                 .cornerRadius(12)
                             }
                             .accessibilityLabel("Process and extract receipt data")
                             
                             // Use as-is button
                             Button(action: {
-                                onConfirm(image)
+                                processAndUseImage()
                             }) {
                                 VStack(spacing: 8) {
                                     Image(systemName: "checkmark")
@@ -260,8 +260,12 @@ struct ImageReviewView: View {
             do {
                 let processedImage = try await imageProcessingService.processReceiptImage(image)
                 await MainActor.run {
+                    self.processedImage = processedImage
+    
+                    self.extractedReceiptData =  ReceiptData(merchantName: "Manual Entry", date: Date(), totalAmount: 0, taxAmount: nil,
+                        items: [], paymentMethod: nil, receiptNumber: nil, confidence: 0.0)
                     isProcessing = false
-                    onConfirm(processedImage)
+                    self.showReceiptReview = true
                 }
             } catch {
                 await MainActor.run {
