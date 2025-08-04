@@ -293,6 +293,8 @@ struct CategoryFilterRow: View {
                 }
             }
             .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
@@ -322,6 +324,8 @@ struct DateRangeFilterRow: View {
                 }
             }
             .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
@@ -351,6 +355,8 @@ struct AmountRangeFilterRow: View {
                 }
             }
             .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
@@ -380,6 +386,8 @@ struct VendorFilterRow: View {
                 }
             }
             .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
