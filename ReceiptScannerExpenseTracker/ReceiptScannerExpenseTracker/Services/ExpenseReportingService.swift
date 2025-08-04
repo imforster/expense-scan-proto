@@ -197,8 +197,8 @@ struct SpendingPattern {
     let seasonalityIndicator: SeasonalityIndicator
 }
 
-/// Trend direction enumeration
-enum TrendDirection {
+/// Trend direction enumeration for reporting
+enum ReportingTrendDirection {
     case increasing
     case decreasing
     case stable

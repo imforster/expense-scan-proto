@@ -48,6 +48,8 @@ extension ExpenseListViewModel {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] expenses in
                 self?.updateSummaryData()
+                // Force UI update by triggering objectWillChange
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
     }
