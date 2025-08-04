@@ -155,6 +155,30 @@ protocol OfflineServiceProtocol {
 }
 ```
 
+#### Recurring Expense Service
+
+```swift
+protocol RecurringExpenseServiceProtocol {
+    func createRecurringExpense(_ expense: Expense, pattern: RecurringPattern) async throws -> RecurringExpense
+    func generateUpcomingRecurringExpenses(for month: Date) async throws -> [Expense]
+    func getRecurringExpenses() async throws -> [RecurringExpense]
+    func updateRecurringExpense(_ recurringExpense: RecurringExpense) async throws
+    func deleteRecurringExpense(id: UUID) async throws
+    func getNextDueDate(for recurringExpense: RecurringExpense) -> Date
+    func checkForDueRecurringExpenses() async throws -> [RecurringExpense]
+    func hasExistingExpenseForDate(_ recurringExpense: RecurringExpense, date: Date) async throws -> Bool
+    func preventDuplicateGeneration(_ recurringExpense: RecurringExpense, targetDate: Date) async throws -> Bool
+}
+```
+
+**Design Rationale**: The recurring expense service addresses Requirement 4.7 by allowing users to manually mark expenses as recurring and automatically generating future expenses based on the specified pattern. This reduces manual entry for predictable expenses like subscriptions, utilities, and regular services while giving users full control over what gets marked as recurring. 
+
+**Duplicate Prevention Strategy**: The service implements multiple layers of duplicate prevention:
+1. **Date-based validation**: Before generating an expense, check if an expense from the same recurring template already exists for the target date
+2. **Last generated tracking**: Track the `lastGeneratedDate` to prevent re-generation of the same period
+3. **Merchant and amount matching**: Verify no similar expense (same merchant, similar amount, same date) exists before creation
+4. **Transaction-based generation**: Use database transactions to ensure atomic operations and prevent race conditions during bulk generation
+
 #### Notification Service
 
 ```swift
@@ -226,6 +250,32 @@ struct ExpenseItem {
     let name: String
     let amount: Decimal
     let category: Category?
+}
+
+struct RecurringExpense {
+    let id: UUID
+    let templateExpense: Expense
+    let pattern: RecurringPattern
+    let isActive: Bool
+    let nextDueDate: Date
+    let lastGeneratedDate: Date?
+    let createdDate: Date
+    let endDate: Date?
+}
+
+struct RecurringPattern {
+    let frequency: RecurrenceFrequency
+    let interval: Int // e.g., every 2 months
+    let dayOfMonth: Int? // for monthly patterns
+    let dayOfWeek: Int? // for weekly patterns
+}
+
+enum RecurrenceFrequency {
+    case daily
+    case weekly
+    case monthly
+    case quarterly
+    case yearly
 }
 
 struct Category {
@@ -415,6 +465,20 @@ erDiagram
         UUID tagId FK
     }
     
+    RECURRING_EXPENSE {
+        UUID id PK
+        UUID templateExpenseId FK
+        String frequency
+        Integer interval
+        Integer dayOfMonth
+        Integer dayOfWeek
+        Boolean isActive
+        Date nextDueDate
+        Date lastGeneratedDate
+        Date createdDate
+        Date endDate
+    }
+    
     EXPENSE ||--o{ EXPENSE_ITEM : contains
     EXPENSE ||--o| RECEIPT : references
     EXPENSE }|--|| CATEGORY : belongs_to
@@ -423,6 +487,7 @@ erDiagram
     RECEIPT ||--o{ RECEIPT_ITEM : contains
     CATEGORY ||--o{ CATEGORY : has_subcategories
     EXPENSE_ITEM }o--|| CATEGORY : categorized_as
+    RECURRING_EXPENSE ||--|| EXPENSE : templates
 ```
 
 ## Error Handling

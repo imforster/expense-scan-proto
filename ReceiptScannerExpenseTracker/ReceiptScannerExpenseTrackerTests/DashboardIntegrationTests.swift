@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import Combine
 @testable import ReceiptScannerExpenseTracker
 
 @MainActor
@@ -8,6 +9,7 @@ class DashboardIntegrationTests: XCTestCase {
     var viewModel: ExpenseListViewModel!
     var mockDataService: ExpenseDataService!
     var testCoreDataManager: CoreDataManager!
+    var cancellables: Set<AnyCancellable>!
     
     override func setUp() {
         super.setUp()
@@ -17,12 +19,15 @@ class DashboardIntegrationTests: XCTestCase {
         let testContext = testCoreDataManager.viewContext
         mockDataService = ExpenseDataService(context: testContext)
         viewModel = ExpenseListViewModel(dataService: mockDataService)
+        cancellables = Set<AnyCancellable>()
     }
     
     override func tearDown() {
+        cancellables?.removeAll()
         viewModel = nil
         mockDataService = nil
         testCoreDataManager = nil
+        cancellables = nil
         super.tearDown()
     }
     
@@ -38,7 +43,7 @@ class DashboardIntegrationTests: XCTestCase {
         // Given: Create some test expenses
         let testContext = testCoreDataManager.viewContext
         
-        let category = Category(context: testContext)
+        let category = ReceiptScannerExpenseTracker.Category(context: testContext)
         category.id = UUID()
         category.name = "Food"
         category.colorHex = "#FF0000"
@@ -196,5 +201,271 @@ class DashboardIntegrationTests: XCTestCase {
         // Then: Should handle empty state gracefully
         XCTAssertTrue(summaryData.isEmpty || summaryData.allSatisfy { $0.amount == 0 }, 
                      "Empty state should show zero amounts or empty data")
+    }
+    
+    // MARK: - Summary Card Display Update Tests
+    
+    func testSummaryCardDisplayUpdatesWithDataChanges() async {
+        // Given: Initial empty state
+        let initialSummaryData = viewModel.summaryData
+        let initialCount = initialSummaryData.count
+        
+        // When: Add expenses and update
+        let testContext = testCoreDataManager.viewContext
+        
+        let category = Category(context: testContext)
+        category.id = UUID()
+        category.name = "Display Test"
+        category.colorHex = "#0000FF"
+        category.icon = "display"
+        category.isDefault = false
+        
+        let expense1 = Expense(context: testContext)
+        expense1.id = UUID()
+        expense1.amount = NSDecimalNumber(value: 150.0)
+        expense1.date = Date()
+        expense1.merchant = "Display Store A"
+        expense1.category = category
+        
+        let expense2 = Expense(context: testContext)
+        expense2.id = UUID()
+        expense2.amount = NSDecimalNumber(value: 75.0)
+        expense2.date = Calendar.current.date(byAdding: .day, value: -5, to: Date()) ?? Date()
+        expense2.merchant = "Display Store B"
+        expense2.category = category
+        
+        try? testContext.save()
+        await viewModel.loadExpenses()
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        
+        // Then: Summary data should update
+        let updatedSummaryData = viewModel.summaryData
+        XCTAssertGreaterThanOrEqual(updatedSummaryData.count, initialCount, "Summary data should be updated")
+        
+        let thisMonthSummary = updatedSummaryData.first { $0.title == "This Month" }
+        XCTAssertNotNil(thisMonthSummary, "Should have This Month summary")
+        XCTAssertGreaterThan(thisMonthSummary?.amount ?? 0, 0, "This Month amount should be greater than 0")
+    }
+    
+    func testSummaryCardTrendDisplayUpdates() async {
+        // Given: Create expenses in current and previous months
+        let testContext = testCoreDataManager.viewContext
+        
+        let category = Category(context: testContext)
+        category.id = UUID()
+        category.name = "Trend Test"
+        category.colorHex = "#FF00FF"
+        category.icon = "chart.line.uptrend.xyaxis"
+        category.isDefault = false
+        
+        // Current month expense
+        let currentExpense = Expense(context: testContext)
+        currentExpense.id = UUID()
+        currentExpense.amount = NSDecimalNumber(value: 200.0)
+        currentExpense.date = Date()
+        currentExpense.merchant = "Current Month Store"
+        currentExpense.category = category
+        
+        // Previous month expense
+        let previousExpense = Expense(context: testContext)
+        previousExpense.id = UUID()
+        previousExpense.amount = NSDecimalNumber(value: 150.0)
+        previousExpense.date = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+        previousExpense.merchant = "Previous Month Store"
+        previousExpense.category = category
+        
+        try? testContext.save()
+        await viewModel.loadExpenses()
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        
+        // When: Get summary data
+        let summaryData = viewModel.summaryData
+        
+        // Then: Trend data should be available
+        let thisMonthSummary = summaryData.first { $0.title == "This Month" }
+        XCTAssertNotNil(thisMonthSummary, "Should have This Month summary")
+        XCTAssertNotNil(thisMonthSummary?.trend, "This Month should have trend data")
+        XCTAssertEqual(thisMonthSummary?.trend?.direction, .increasing, "Trend should show increasing")
+    }
+    
+    func testSummaryCardFormattingForDisplay() {
+        // Given: Create summary data with specific values
+        let summaryData = SummaryData(
+            title: "Display Test",
+            amount: 1234.56,
+            trend: TrendData(previousAmount: 1000.00, currentAmount: 1234.56)
+        )
+        
+        // When: Format for display
+        let formattedAmount = summaryData.formattedAmount
+        let formattedTrend = summaryData.formattedTrend
+        
+        // Then: Should be properly formatted for UI display
+        XCTAssertTrue(formattedAmount.contains("$"), "Amount should include currency symbol")
+        XCTAssertTrue(formattedAmount.contains("1,235") || formattedAmount.contains("1234"), "Amount should be formatted correctly")
+        
+        XCTAssertNotNil(formattedTrend, "Trend should be formatted")
+        XCTAssertTrue(formattedTrend!.contains("%"), "Trend should include percentage")
+        XCTAssertTrue(formattedTrend!.contains("vs last month"), "Trend should include comparison text")
+    }
+    
+    func testSummaryCardReactiveUpdates() async {
+        // Given: Initial state
+        var summaryUpdateCount = 0
+        let expectation = XCTestExpectation(description: "Summary updates")
+        expectation.expectedFulfillmentCount = 2 // Initial + after expense addition
+        
+        // Observe summary data changes
+        viewModel.$displayedExpenses
+            .sink { _ in
+                summaryUpdateCount += 1
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+        
+        // When: Add an expense
+        let testContext = testCoreDataManager.viewContext
+        
+        let category = Category(context: testContext)
+        category.id = UUID()
+        category.name = "Reactive Test"
+        category.colorHex = "#00FFFF"
+        category.icon = "arrow.clockwise"
+        category.isDefault = false
+        
+        let expense = Expense(context: testContext)
+        expense.id = UUID()
+        expense.amount = NSDecimalNumber(value: 300.0)
+        expense.date = Date()
+        expense.merchant = "Reactive Store"
+        expense.category = category
+        
+        try? testContext.save()
+        await viewModel.loadExpenses()
+        
+        // Then: Should receive updates
+        await fulfillment(of: [expectation], timeout: 5.0)
+        XCTAssertGreaterThan(summaryUpdateCount, 0, "Should receive summary updates")
+    }
+    
+    func testSummaryCardDisplayWithFiltering() async {
+        // Given: Create expenses in different categories
+        let testContext = testCoreDataManager.viewContext
+        
+        let foodCategory = Category(context: testContext)
+        foodCategory.id = UUID()
+        foodCategory.name = "Food"
+        foodCategory.colorHex = "#FFA500"
+        foodCategory.icon = "fork.knife"
+        foodCategory.isDefault = false
+        
+        let transportCategory = Category(context: testContext)
+        transportCategory.id = UUID()
+        transportCategory.name = "Transport"
+        transportCategory.colorHex = "#0000FF"
+        transportCategory.icon = "car"
+        transportCategory.isDefault = false
+        
+        let foodExpense = Expense(context: testContext)
+        foodExpense.id = UUID()
+        foodExpense.amount = NSDecimalNumber(value: 50.0)
+        foodExpense.date = Date()
+        foodExpense.merchant = "Restaurant"
+        foodExpense.category = foodCategory
+        
+        let transportExpense = Expense(context: testContext)
+        transportExpense.id = UUID()
+        transportExpense.amount = NSDecimalNumber(value: 30.0)
+        transportExpense.date = Date()
+        transportExpense.merchant = "Gas Station"
+        transportExpense.category = transportCategory
+        
+        try? testContext.save()
+        await viewModel.loadExpenses()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        
+        // When: Apply category filter
+        viewModel.selectedCategory = foodCategory
+        await viewModel.applyFilters()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        
+        // Then: Summary should reflect filtered data
+        let summaryData = viewModel.summaryData
+        XCTAssertTrue(summaryData.count > 0, "Should generate summary data with filters")
+        
+        // Summary is based on displayedExpenses which should be filtered
+        let thisMonthSummary = summaryData.first { $0.title == "This Month" }
+        XCTAssertNotNil(thisMonthSummary, "Should have This Month summary")
+    }
+    
+    func testSummaryCardDisplayWithEmptyFilterResults() async {
+        // Given: Create expenses
+        let testContext = testCoreDataManager.viewContext
+        
+        let category = Category(context: testContext)
+        category.id = UUID()
+        category.name = "Test Category"
+        category.colorHex = "#808080"
+        category.icon = "questionmark"
+        category.isDefault = false
+        
+        let expense = Expense(context: testContext)
+        expense.id = UUID()
+        expense.amount = NSDecimalNumber(value: 100.0)
+        expense.date = Date()
+        expense.merchant = "Test Store"
+        expense.category = category
+        
+        try? testContext.save()
+        await viewModel.loadExpenses()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        
+        // When: Apply filter that returns no results
+        viewModel.searchText = "NonexistentStore"
+        await viewModel.applyFilters()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        
+        // Then: Summary should handle empty filtered results
+        let summaryData = viewModel.summaryData
+        XCTAssertTrue(summaryData.isEmpty || summaryData.allSatisfy { $0.amount == 0 },
+                     "Summary should handle empty filter results")
+    }
+    
+    // MARK: - Summary Data Consistency Tests
+    
+    func testSummaryDataConsistencyAfterMultipleUpdates() async {
+        // Given: Initial state
+        let testContext = testCoreDataManager.viewContext
+        
+        let category = Category(context: testContext)
+        category.id = UUID()
+        category.name = "Consistency Test"
+        category.colorHex = "#800080"
+        category.icon = "checkmark.circle"
+        category.isDefault = false
+        
+        // When: Add multiple expenses in sequence
+        for i in 1...5 {
+            let expense = Expense(context: testContext)
+            expense.id = UUID()
+            expense.amount = NSDecimalNumber(value: Double(i * 20))
+            expense.date = Calendar.current.date(byAdding: .day, value: -i, to: Date()) ?? Date()
+            expense.merchant = "Consistency Store \(i)"
+            expense.category = category
+            
+            try? testContext.save()
+            await viewModel.loadExpenses()
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            
+            // Verify consistency after each addition
+            let summaryData = viewModel.summaryData
+            let thisMonthSummary = summaryData.first { $0.title == "This Month" }
+            XCTAssertNotNil(thisMonthSummary, "Should have This Month summary after update \(i)")
+        }
+        
+        // Then: Final verification
+        let finalSummaryData = viewModel.summaryData
+        let finalThisMonthSummary = finalSummaryData.first { $0.title == "This Month" }
+        XCTAssertEqual(finalThisMonthSummary?.amount, 300.0, "Final total should be correct")
     }
 }
