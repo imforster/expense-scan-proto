@@ -94,6 +94,14 @@ class TestMockCategoryService: CategoryService {
         try context.save()
     }
     
+    // Override cleanup method for testing
+    override func cleanupDuplicateCategories() async throws {
+        // In tests, we might want to skip cleanup or do a simplified version
+        print("TestMockCategoryService.cleanupDuplicateCategories called")
+        // For now, just call the parent implementation
+        try await super.cleanupDuplicateCategories()
+    }
+    
     // Copy of the parent class method to ensure we're using the same subcategories
     private func getDefaultSubcategories(for rule: BudgetRule) -> [(String, String, String)] {
         switch rule {
