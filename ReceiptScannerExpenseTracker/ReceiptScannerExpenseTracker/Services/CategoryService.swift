@@ -79,6 +79,7 @@ protocol CategoryServiceProtocol {
     func getCategoryUsageStats() async throws -> [CategoryUsageStats]
     func getBudgetRuleStats(for rule: BudgetRule, period: DateInterval) async throws -> BudgetRuleStats
     func initializeBudgetRuleCategories() async throws
+    func cleanupDuplicateCategories() async throws
 }
 
 // MARK: - Category Usage Statistics
@@ -253,7 +254,20 @@ class CategoryService: CategoryServiceProtocol {
                 
                 do {
                     let categories = try self.context.fetch(fetchRequest)
-                    continuation.resume(returning: categories)
+                    
+                    // Remove duplicates based on category name and ensure unique categories
+                    var uniqueCategories: [Category] = []
+                    var seenNames: Set<String> = []
+                    
+                    for category in categories {
+                        let categoryName = category.safeName
+                        if !seenNames.contains(categoryName) {
+                            seenNames.insert(categoryName)
+                            uniqueCategories.append(category)
+                        }
+                    }
+                    
+                    continuation.resume(returning: uniqueCategories)
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -685,6 +699,63 @@ class CategoryService: CategoryServiceProtocol {
                 ("Stock Investments", "chart.line.uptrend.xyaxis", "26C6DA"),
                 ("Other Investments", "chart.bar.fill", "4DD0E1")
             ]
+        }
+    }
+    
+    // MARK: - Database Cleanup Methods
+    
+    func cleanupDuplicateCategories() async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            context.perform {
+                do {
+                    let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
+                    fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Category.name, ascending: true)]
+                    
+                    let allCategories = try self.context.fetch(fetchRequest)
+                    var categoryGroups: [String: [Category]] = [:]
+                    
+                    // Group categories by name
+                    for category in allCategories {
+                        let name = category.safeName
+                        categoryGroups[name, default: []].append(category)
+                    }
+                    
+                    // For each group with duplicates, keep the first one and delete the rest
+                    for (name, categories) in categoryGroups {
+                        if categories.count > 1 {
+                            print("Found \(categories.count) duplicate categories for '\(name)'")
+                            
+                            // Keep the first category (preferably default ones)
+                            let sortedCategories = categories.sorted { first, second in
+                                if first.isDefault != second.isDefault {
+                                    return first.isDefault && !second.isDefault
+                                }
+                                return first.objectID.description < second.objectID.description
+                            }
+                            
+                            let categoryToKeep = sortedCategories.first!
+                            let categoriesToDelete = Array(sortedCategories.dropFirst())
+                            
+                            // Move any expenses from duplicate categories to the one we're keeping
+                            for duplicateCategory in categoriesToDelete {
+                                if let expenses = duplicateCategory.expenses?.allObjects as? [Expense] {
+                                    for expense in expenses {
+                                        expense.category = categoryToKeep
+                                    }
+                                }
+                                
+                                // Delete the duplicate category
+                                self.context.delete(duplicateCategory)
+                            }
+                        }
+                    }
+                    
+                    try self.context.save()
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
         }
     }
     

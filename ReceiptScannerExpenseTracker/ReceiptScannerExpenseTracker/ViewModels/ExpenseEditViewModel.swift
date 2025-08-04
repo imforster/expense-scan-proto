@@ -45,7 +45,7 @@ class ExpenseEditViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     // Payment method options
-    let paymentMethods = ["Cash", "Credit Card", "Debit Card", "Check", "Bank Transfer", "Digital Wallet", "Other"]
+    let paymentMethods = ["Cash", "Credit Card", "MasterCard", "Visa", "AMEX","Debit Card", "Check", "Bank Transfer", "Digital Wallet", "Other"]
     
     init(context: NSManagedObjectContext, expense: Expense? = nil, categoryService: CategoryServiceProtocol = CategoryService()) {
         self.context = context
@@ -85,6 +85,10 @@ class ExpenseEditViewModel: ObservableObject {
     private func loadInitialData() {
         Task {
             do {
+                // Clean up any duplicate categories first
+                try await categoryService.cleanupDuplicateCategories()
+                
+                // Then load the clean categories
                 availableCategories = try await categoryService.getAllCategories()
                 availableTags = try await loadAllTags()
             } catch {
