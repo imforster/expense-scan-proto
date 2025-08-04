@@ -68,6 +68,7 @@ class ExpenseListViewModel: ObservableObject {
         
         setupBindings()
         setupFilterObservers()
+        setupSummaryDataObserver()
     }
     
     // MARK: - Setup Methods
