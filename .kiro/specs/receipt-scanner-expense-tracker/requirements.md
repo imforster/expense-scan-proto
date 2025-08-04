@@ -65,6 +65,7 @@ The Receipt Scanner Expense Tracker is a Swift-based iOS application designed to
 4. WHEN backing up data THEN the system SHALL use secure transmission protocols.
 5. WHEN the user requests data deletion THEN the system SHALL provide options to selectively or completely remove their data.
 6. IF the app handles business expenses THEN the system SHALL comply with relevant financial data regulations.
+7. WHEN a user marks an expense as recurring with a specified frequency THEN the system SHALL automatically generate upcoming monthly expenses for the next month if they don't already exist.
 
 ### 5. User Experience and Accessibility
 

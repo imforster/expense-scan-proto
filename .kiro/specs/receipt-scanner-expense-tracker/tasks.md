@@ -125,7 +125,7 @@
     - Verify dashboard shows accurate real-time expense summaries
     - _Requirements: 2.4, 3.1_
 
-  - [ ] 4.7 Add comprehensive unit tests for summary functionality
+  - [x] 4.7 Add comprehensive unit tests for summary functionality
     - Write unit tests for SummaryData struct and calculations
     - Test edge cases for trend calculations (zero amounts, missing data)
     - Add integration tests for summary data in ExpenseListViewModel
@@ -135,6 +135,23 @@
     - **Quality Gates**: Comprehensive test suite included and all tests passing
     - Verify complete app functionality with comprehensive test coverage
     - _Requirements: 2.4, 3.1, 3.3_
+
+  - [ ] 4.8 Implement recurring expense manual creation and auto-generation system
+    - As part of this implementation please outline the algorithm and get approval before proceeding with implementation
+    - Create RecurringExpense and RecurringPattern Core Data entities
+    - Implement RecurringExpenseService with manual recurring expense creation
+    - Add UI for marking expenses as recurring with frequency selection
+    - Build method to generate upcoming monthly expenses with duplicate prevention
+    - Implement date-based validation to prevent duplicate expense generation
+    - Add merchant and amount matching logic to avoid similar expense duplicates
+    - Create background task to check and generate due recurring expenses safely
+    - Implement UI for managing recurring expenses (view, edit, delete)
+    - Add recurring expense list view with next due dates and generation status
+    - Build notification system for generated recurring expenses
+    - Write comprehensive unit tests for recurring expense logic and duplicate prevention
+    - **Quality Gates**: All tests pass, recurring expenses generate correctly for next month with zero duplicates
+    - Verify users can mark expenses as recurring and system generates future expenses without any duplicates
+    - _Requirements: 4.7_
 
 - [ ] 5. Reporting and Analytics
   - [x] 5.1 Implement basic expense reporting
