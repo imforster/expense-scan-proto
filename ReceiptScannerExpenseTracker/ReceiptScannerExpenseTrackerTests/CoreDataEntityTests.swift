@@ -317,5 +317,9 @@ class CoreDataEntityTests: CoreDataTestCase {
         func initializeBudgetRuleCategories() async throws {
             // No-op
         }
+        
+        func cleanupDuplicateCategories() async throws {
+            // No-op for mock
+        }
     }
 }

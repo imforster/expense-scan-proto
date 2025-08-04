@@ -624,4 +624,20 @@ class MockCategoryService: CategoryServiceProtocol {
     func initializeBudgetRuleCategories() async throws {
         // Mock implementation
     }
+    
+    func cleanupDuplicateCategories() async throws {
+        // Mock implementation - for testing, we can just remove duplicates by name
+        var uniqueCategories: [ReceiptScannerExpenseTracker.Category] = []
+        var seenNames: Set<String> = []
+        
+        for category in categories {
+            let categoryName = category.safeName
+            if !seenNames.contains(categoryName) {
+                seenNames.insert(categoryName)
+                uniqueCategories.append(category)
+            }
+        }
+        
+        categories = uniqueCategories
+    }
 }
