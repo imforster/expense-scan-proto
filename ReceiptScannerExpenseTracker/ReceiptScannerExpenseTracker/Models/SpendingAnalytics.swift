@@ -23,7 +23,7 @@ struct TrendData: Equatable {
     let previousAmount: Decimal
     let changeAmount: Decimal
     let changePercentage: Double
-    let direction: SpendingTrendDirection
+    let direction: TrendDirection
     let isSignificant: Bool
     
     init(previousAmount: Decimal, currentAmount: Decimal) {
@@ -51,7 +51,7 @@ struct TrendData: Equatable {
 }
 
 /// Trend direction enumeration for spending analytics
-enum SpendingTrendDirection: String, CaseIterable {
+enum TrendDirection: String, CaseIterable {
     case increasing = "increasing"
     case decreasing = "decreasing"
     case stable = "stable"
