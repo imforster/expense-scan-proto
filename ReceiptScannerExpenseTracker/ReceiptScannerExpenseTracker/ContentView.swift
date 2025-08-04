@@ -16,6 +16,12 @@ struct ContentView: View {
 
     @State private var selectedTab = 0
     @State private var showingCameraView = false
+    @StateObject private var expenseViewModel: ExpenseListViewModel
+
+    init() {
+        let dataService = ExpenseDataService(context: CoreDataManager.shared.viewContext)
+        self._expenseViewModel = StateObject(wrappedValue: ExpenseListViewModel(dataService: dataService))
+    }
 
     private let tabItems = [
         CustomTabBar.TabItem(
@@ -76,6 +82,86 @@ struct ContentView: View {
         }
         .background(AppTheme.backgroundColor)
         .animation(reduceMotion ? .none : .easeInOut, value: selectedTab)
+        .onAppear {
+            Task {
+                await expenseViewModel.loadExpenses()
+            }
+        }
+        .onChange(of: selectedTab) { newTab in
+            // Refresh data when returning to home tab
+            if newTab == 0 {
+                Task {
+                    await expenseViewModel.refreshExpenses()
+                }
+            }
+        }
+    }
+
+    // MARK: - Summary Cards View
+    
+    private var summaryCardsView: some View {
+        Group {
+            if expenseViewModel.isLoading {
+                // Loading state for summary cards
+                HStack(spacing: 12) {
+                    ForEach(0..<2, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.secondarySystemBackground))
+                            .frame(height: 100)
+                            .redacted(reason: .placeholder)
+                            .shimmerEffect()
+                    }
+                }
+                .padding(.horizontal)
+            } else {
+                let summaryData = expenseViewModel.summaryData
+                
+                // Always show at least two cards - use real data when available, fallback to zero amounts
+                HStack(spacing: 12) {
+                    // First card - This Month
+                    if let monthData = summaryData.first(where: { $0.title == "This Month" }) {
+                        ExpenseSummaryCard(
+                            summaryData: monthData,
+                            color: AppTheme.primaryColor
+                        )
+                    } else {
+                        ExpenseSummaryCard(
+                            summaryData: SummaryData(title: "This Month", amount: expenseViewModel.currentMonthTotal),
+                            color: AppTheme.primaryColor
+                        )
+                    }
+                    
+                    // Second card - This Week
+                    if let weekData = summaryData.first(where: { $0.title == "This Week" }) {
+                        ExpenseSummaryCard(
+                            summaryData: weekData,
+                            color: AppTheme.secondaryColor
+                        )
+                    } else {
+                        ExpenseSummaryCard(
+                            summaryData: SummaryData(title: "This Week", amount: expenseViewModel.currentWeekTotal),
+                            color: AppTheme.secondaryColor
+                        )
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: expenseViewModel.isLoading)
+        .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: expenseViewModel.summaryData.count)
+    }
+
+    // MARK: - Helper Methods
+    
+    private func formatAmount(_ amount: NSDecimalNumber?) -> String {
+        guard let amount = amount else { return "0.00" }
+        
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        
+        return formatter.string(from: amount) ?? "0.00"
     }
 
     // MARK: - Actions
@@ -131,23 +217,9 @@ struct ContentView: View {
                         }
                     }
 
-                    // Sample expense summary cards
-                    HStack(spacing: 12) {
-                        ExpenseSummaryCard(
-                            title: "This Month",
-                            amount: "1,245.50",
-                            trend: 5.2,
-                            color: AppTheme.primaryColor
-                        )
-
-                        ExpenseSummaryCard(
-                            title: "Last Month",
-                            amount: "1,183.75",
-                            trend: -2.8,
-                            color: AppTheme.secondaryColor
-                        )
-                    }
-                    .padding(.horizontal)
+                    // Real expense summary cards
+                    summaryCardsView
+                        .padding(.horizontal)
 
                     // Recent transactions section
                     VStack(alignment: .leading, spacing: 12) {
@@ -155,28 +227,60 @@ struct ContentView: View {
                             .font(AppTheme.Typography.subheadingFont)
                             .padding(.horizontal)
 
-                        // Sample receipt cards
-                        ReceiptCard(
-                            merchantName: "Grocery Store",
-                            date: Date(),
-                            amount: "56.78",
-                            imageURL: nil,
-                            onTap: {}
-                        )
-                        .padding(.horizontal)
-
-                        ReceiptCard(
-                            merchantName: "Coffee Shop",
-                            date: Date().addingTimeInterval(-86400),
-                            amount: "4.50",
-                            imageURL: nil,
-                            onTap: {}
-                        )
-                        .padding(.horizontal)
+                        if expenseViewModel.isLoading {
+                            // Loading state for recent transactions
+                            ForEach(0..<3, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.secondarySystemBackground))
+                                    .frame(height: 70)
+                                    .redacted(reason: .placeholder)
+                                    .shimmerEffect()
+                                    .padding(.horizontal)
+                            }
+                        } else {
+                            let recentExpenses = Array(expenseViewModel.displayedExpenses.prefix(3))
+                            
+                            if recentExpenses.isEmpty {
+                                // Empty state for recent transactions
+                                CardView {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "receipt")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(.secondary)
+                                        
+                                        Text("No Recent Transactions")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("Start by scanning your first receipt")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding()
+                                }
+                                .padding(.horizontal)
+                            } else {
+                                // Real recent transactions
+                                ForEach(recentExpenses, id: \.id) { expense in
+                                    ReceiptCard(
+                                        merchantName: expense.merchant.isEmpty ? "Unknown Merchant" : expense.merchant,
+                                        date: expense.date,
+                                        amount: formatAmount(expense.amount),
+                                        imageURL: expense.receipt?.imageURL,
+                                        onTap: {
+                                            // Navigate to expense detail
+                                            selectedTab = 2
+                                        }
+                                    )
+                                    .padding(.horizontal)
+                                }
+                            }
+                        }
 
                         SecondaryButton(title: "View All Expenses") {
                             selectedTab = 2
                         }
+                        .padding(.horizontal)
                     }
                     .padding(.top)
                 }
@@ -366,6 +470,30 @@ struct ContentView: View {
                 .listStyle(InsetGroupedListStyle())
             }
         }
+    }
+}
+
+// MARK: - View Extensions
+
+extension View {
+    func shimmerEffect() -> some View {
+        self.overlay(
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.4), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .rotationEffect(.degrees(30))
+                .offset(x: -200)
+                .animation(
+                    .easeInOut(duration: 1.5).repeatForever(autoreverses: false),
+                    value: UUID()
+                )
+        )
+        .clipped()
     }
 }
 

@@ -112,7 +112,7 @@
     - Verify app continues to function properly with enhanced calculations
     - _Requirements: 3.1, 3.3_
 
-  - [ ] 4.6 Update dashboard home view with real summary data
+  - [x] 4.6 Update dashboard home view with real summary data
     - Update ExpenseSummaryCard to work with SummaryData model instead of raw parameters
     - Replace sample data in ContentView homeView with real summary calculations
     - Integrate ExpenseListViewModel summary data into dashboard display
