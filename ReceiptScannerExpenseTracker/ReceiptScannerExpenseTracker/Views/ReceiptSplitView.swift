@@ -1,6 +1,15 @@
 import SwiftUI
 import CoreData
 
+extension NumberFormatter {
+    static let currency: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale.current
+        return formatter
+    }()
+}
+
 struct ReceiptSplitView: View {
     @ObservedObject var viewModel: ExpenseEditViewModel
     @Environment(\.dismiss) private var dismiss

@@ -3,6 +3,15 @@ import CoreData
 import SwiftUI
 import Combine
 
+// MARK: - Extensions
+
+extension DateFormatter {
+    func apply(_ closure: (DateFormatter) -> Void) -> DateFormatter {
+        closure(self)
+        return self
+    }
+}
+
 @MainActor
 class ExpenseEditViewModel: ObservableObject {
     @Published var amount: String = ""
@@ -108,51 +117,67 @@ class ExpenseEditViewModel: ObservableObject {
         
         // Extract recurring pattern information from notes if present
         if isRecurring {
-            // Extract pattern
-            if let patternRange = notes.range(of: "\\[Recurring: ([^\\]]+)\\]", options: .regularExpression) {
-                let patternString = String(notes[patternRange])
-                    .replacingOccurrences(of: "[Recurring: ", with: "")
-                    .replacingOccurrences(of: "]", with: "")
-                
-                if let pattern = RecurringPattern.allCases.first(where: { $0.rawValue == patternString }) {
-                    recurringPattern = pattern
+            // Extract pattern using NSRegularExpression for better control
+            let patternRegex = try? NSRegularExpression(pattern: "\\[Recurring: ([^\\]]+)\\]", options: [])
+            if let regex = patternRegex {
+                let nsString = notes as NSString
+                if let match = regex.firstMatch(in: notes, options: [], range: NSRange(location: 0, length: nsString.length)) {
+                    let patternString = nsString.substring(with: match.range(at: 1))
+                    
+                    // Try exact match first, then case-insensitive match
+                    if let pattern = RecurringPattern.allCases.first(where: { $0.rawValue == patternString }) {
+                        recurringPattern = pattern
+                    } else if let pattern = RecurringPattern.allCases.first(where: { $0.rawValue.lowercased() == patternString.lowercased() }) {
+                        recurringPattern = pattern
+                    }
+                    
+                    // Clean up notes by removing the pattern info
+                    notes = notes.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
                 }
-                
-                // Clean up notes by removing the pattern info
-                notes = notes.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
             }
             
-            // Extract next date
-            if let nextDateRange = notes.range(of: "\\[Next: ([^\\]]+)\\]", options: .regularExpression) {
-                let nextDateString = String(notes[nextDateRange])
-                    .replacingOccurrences(of: "[Next: ", with: "")
-                    .replacingOccurrences(of: "]", with: "")
-                
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .medium
-                dateFormatter.timeStyle = .none
-                
-                if let parsedDate = dateFormatter.date(from: nextDateString) {
-                    nextExpectedDate = parsedDate
+            // Extract next date using NSRegularExpression
+            let nextDateRegex = try? NSRegularExpression(pattern: "\\[Next: ([^\\]]+)\\]", options: [])
+            if let regex = nextDateRegex {
+                let nsString = notes as NSString
+                if let match = regex.firstMatch(in: notes, options: [], range: NSRange(location: 0, length: nsString.length)) {
+                    let nextDateString = nsString.substring(with: match.range(at: 1))
+                    
+                    // Try multiple date formats
+                    let dateFormatters = [
+                        DateFormatter().apply { $0.dateStyle = .medium; $0.timeStyle = .none },
+                        DateFormatter().apply { $0.dateFormat = "MMM d, yyyy" },
+                        DateFormatter().apply { $0.dateFormat = "MM/dd/yyyy" },
+                        DateFormatter().apply { $0.dateFormat = "yyyy-MM-dd" }
+                    ]
+                    
+                    for formatter in dateFormatters {
+                        if let parsedDate = formatter.date(from: nextDateString) {
+                            nextExpectedDate = parsedDate
+                            break
+                        }
+                    }
+                    
+                    // Clean up notes by removing the next date info
+                    notes = notes.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
                 }
-                
-                // Clean up notes by removing the next date info
-                notes = notes.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
             }
             
-            // Extract reminder settings
-            if let reminderRange = notes.range(of: "\\[Remind: (\\d+)\\]", options: .regularExpression) {
-                let reminderString = String(notes[reminderRange])
-                    .replacingOccurrences(of: "[Remind: ", with: "")
-                    .replacingOccurrences(of: "]", with: "")
-                
-                if let days = Int(reminderString) {
-                    shouldRemind = true
-                    reminderDays = days
+            // Extract reminder settings using NSRegularExpression
+            let reminderRegex = try? NSRegularExpression(pattern: "\\[Remind: (\\d+)\\]", options: [])
+            if let regex = reminderRegex {
+                let nsString = notes as NSString
+                if let match = regex.firstMatch(in: notes, options: [], range: NSRange(location: 0, length: nsString.length)) {
+                    let reminderString = nsString.substring(with: match.range(at: 1))
+                    
+                    if let days = Int(reminderString) {
+                        shouldRemind = true
+                        reminderDays = days
+                    }
+                    
+                    // Clean up notes by removing the reminder info
+                    notes = notes.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
                 }
-                
-                // Clean up notes by removing the reminder info
-                notes = notes.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
             }
             
             // Extract auto-create setting
@@ -695,33 +720,46 @@ class ExpenseEditViewModel: ObservableObject {
         
         // Store recurring pattern information in notes if recurring
         if isRecurring {
-            // Add recurring pattern info if not already present
-            if !notesText.contains("[Recurring: ") {
-                let patternInfo = "[Recurring: \(recurringPattern.rawValue)]"
-                if notesText.isEmpty {
-                    notesText = patternInfo
-                } else {
-                    notesText += "\n\n" + patternInfo
-                }
-                
-                // Add next expected date if available
-                if let nextDate = nextExpectedDate {
-                    let dateFormatter = DateFormatter()
-                    dateFormatter.dateStyle = .medium
-                    dateFormatter.timeStyle = .none
-                    notesText += " [Next: \(dateFormatter.string(from: nextDate))]"
-                }
-                
-                // Add reminder settings if enabled
-                if shouldRemind {
-                    notesText += " [Remind: \(reminderDays)]"
-                }
-                
-                // Add auto-create flag if enabled
-                if autoCreateNext {
-                    notesText += " [AutoCreate]"
-                }
+            // Remove any existing recurring info first to avoid duplicates
+            notesText = notesText.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
+            notesText = notesText.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
+            notesText = notesText.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
+            notesText = notesText.replacingOccurrences(of: "\\[AutoCreate\\]", with: "", options: .regularExpression)
+            
+            // Clean up extra whitespace
+            notesText = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Add recurring pattern info
+            let patternInfo = "[Recurring: \(recurringPattern.rawValue)]"
+            if notesText.isEmpty {
+                notesText = patternInfo
+            } else {
+                notesText += "\n\n" + patternInfo
             }
+            
+            // Add next expected date if available, or calculate it if not set
+            let nextDate = nextExpectedDate ?? calculateNextExpectedDate()
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .none
+            notesText += " [Next: \(dateFormatter.string(from: nextDate))]"
+            
+            // Add reminder settings if enabled
+            if shouldRemind {
+                notesText += " [Remind: \(reminderDays)]"
+            }
+            
+            // Add auto-create flag if enabled
+            if autoCreateNext {
+                notesText += " [AutoCreate]"
+            }
+        } else {
+            // If not recurring, remove any existing recurring info
+            notesText = notesText.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
+            notesText = notesText.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
+            notesText = notesText.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
+            notesText = notesText.replacingOccurrences(of: "\\[AutoCreate\\]", with: "", options: .regularExpression)
+            notesText = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         
         // Save the final notes
@@ -893,6 +931,23 @@ class ExpenseEditViewModel: ObservableObject {
     var totalExpenseItemsAmount: Decimal {
         expenseItems.reduce(Decimal.zero) { total, item in
             total + (Decimal(string: item.amount) ?? 0)
+        }
+    }
+    
+    private func calculateNextExpectedDate() -> Date {
+        let calendar = Calendar.current
+        
+        switch recurringPattern {
+        case .none:
+            return date
+        case .weekly:
+            return calendar.date(byAdding: .weekOfYear, value: 1, to: date) ?? date
+        case .biweekly:
+            return calendar.date(byAdding: .weekOfYear, value: 2, to: date) ?? date
+        case .monthly:
+            return calendar.date(byAdding: .month, value: 1, to: date) ?? date
+        case .quarterly:
+            return calendar.date(byAdding: .month, value: 3, to: date) ?? date
         }
     }
     
