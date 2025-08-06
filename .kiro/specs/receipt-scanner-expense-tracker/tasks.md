@@ -136,21 +136,61 @@
     - Verify complete app functionality with comprehensive test coverage
     - _Requirements: 2.4, 3.1, 3.3_
 
-  - [x] 4.8 Implement recurring expense manual creation and auto-generation system
-    - As part of this implementation please outline the algorithm and get approval before proceeding with implementation
-    - Create RecurringExpense and RecurringPattern Core Data entities
-    - Implement RecurringExpenseService with manual recurring expense creation
-    - Add UI for marking expenses as recurring with frequency selection
-    - Build method to generate upcoming monthly expenses with duplicate prevention
-    - Implement date-based validation to prevent duplicate expense generation
-    - Add merchant and amount matching logic to avoid similar expense duplicates
-    - Create background task to check and generate due recurring expenses safely
-    - Implement UI for managing recurring expenses (view, edit, delete)
-    - Add recurring expense list view with next due dates and generation status
-    - Build notification system for generated recurring expenses
-    - Write comprehensive unit tests for recurring expense logic and duplicate prevention
-    - **Quality Gates**: All tests pass, recurring expenses generate correctly for next month with zero duplicates
-    - Verify users can mark expenses as recurring and system generates future expenses without any duplicates
+  - [x] 4.8 Implement basic recurring expense manual creation system
+    - Create simple recurring expense setup UI with pattern selection (weekly, bi-weekly, monthly, quarterly)
+    - Add UI for marking expenses as recurring with frequency selection and interval options
+    - Implement notes-based storage for recurring information with parsing logic
+    - Build method to generate upcoming expenses with duplicate prevention using date/merchant/amount matching
+    - Implement UI for managing recurring expenses (view, edit, delete) in SimpleRecurringSetupView
+    - Add recurring expense list view with next due dates and manual generation button
+    - Add visual indicators in expense list to distinguish generated recurring expenses from templates
+    - Write unit tests for recurring expense logic and duplicate prevention
+    - **Quality Gates**: All tests pass, users can mark expenses as recurring and manually generate future expenses
+    - Verify basic recurring expense functionality works without duplicates and shows proper visual indicators
+    - _Requirements: 4.7_
+
+  - [ ] 4.9 Implement multi-currency support for expenses
+    - Add currency field to Expense Core Data model with default to local currency
+    - Create currency selection UI component with popular currencies and search functionality
+    - Implement currency detection from receipt OCR text when possible
+    - Add currency display throughout the app (expense lists, summaries, charts)
+    - Build currency conversion service for reporting and analytics (optional exchange rates)
+    - Update expense creation and editing flows to include currency selection
+    - Add currency-specific formatting for amounts throughout the app
+    - Implement currency grouping in reports and summaries
+    - Write unit tests for currency handling and formatting
+    - **Quality Gates**: All tests pass, expenses can be created with different currencies
+    - Verify currency selection defaults to local currency and displays correctly throughout app
+    - _Requirements: 2.1, 2.4, 3.1_
+
+  - [ ] 4.10 Migrate recurring expenses to proper Core Data entities
+    - Create RecurringExpense and RecurringPattern Core Data entities for better data management
+    - Implement proper separation between recurring templates and generated expense instances
+    - Add Core Data constraints and relationships to prevent duplicate recurring templates
+    - Add relationship between Expense and RecurringExpense entities for generated instances
+    - Implement data migration service to convert existing notes-based recurring data to new Core Data entities
+    - Add migration validation to ensure all existing recurring expenses are preserved during upgrade
+    - Implement RecurringExpenseService to replace notes-based storage approach
+    - Update existing UI components to work with new Core Data entities instead of notes parsing
+    - Add proper visual indicators throughout app to distinguish recurring templates vs generated instances
+    - Implement advanced duplicate prevention with fuzzy matching algorithms
+    - Write comprehensive unit tests for Core Data entities, migration, and RecurringExpenseService
+    - **Quality Gates**: All tests pass, data migration preserves existing recurring expenses, no duplicate templates in recurring view, existing UI works with new data model
+    - Verify all recurring expense functionality works seamlessly with new Core Data approach and no user data is lost
+    - _Requirements: 4.7_
+
+  - [ ] 4.11 Add automated scheduling and notifications for recurring expenses
+    - Add background task to automatically check and generate due recurring expenses
+    - Build notification system for generated recurring expenses with user alerts
+    - Implement scheduling service that runs periodically to check for due recurring expenses
+    - Add user preferences for notification timing and frequency
+    - Enhance UI with better recurring expense management (bulk operations, advanced scheduling)
+    - Add recurring expense analytics and reporting features
+    - Implement notification badges and in-app alerts for newly generated expenses
+    - Add settings for enabling/disabling automatic generation and notifications
+    - Write comprehensive unit tests for scheduling, notifications, and background processing
+    - **Quality Gates**: All tests pass, background generation works automatically with notifications, users can control automation preferences
+    - Verify automated scheduling works reliably without impacting app performance
     - _Requirements: 4.7_
 
 - [ ] 5. Reporting and Analytics
