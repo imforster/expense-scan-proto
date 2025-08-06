@@ -8,6 +8,7 @@ struct ExpenseDetailView: View {
     @ObservedObject var expense: Expense
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
+    @State private var showingRecurringSetup = false
     @State private var isDeleting = false
 
     
@@ -27,6 +28,9 @@ struct ExpenseDetailView: View {
         .toolbar { toolbarContent }
         .sheet(isPresented: $showingEditView) {
             ExpenseEditView(expense: expense, context: viewContext)
+        }
+        .sheet(isPresented: $showingRecurringSetup) {
+            SimpleRecurringSetupView(expense: expense)
         }
         .alert("Delete Expense", isPresented: $showingDeleteAlert) {
             deleteAlert
@@ -84,6 +88,16 @@ struct ExpenseDetailView: View {
                 Menu {
                     Button("Edit", systemImage: "pencil") {
                         showingEditView = true
+                    }
+                    
+                    if expense.isRecurring {
+                        Button("Update Recurring", systemImage: "repeat") {
+                            showingRecurringSetup = true
+                        }
+                    } else {
+                        Button("Set as Recurring", systemImage: "repeat") {
+                            showingRecurringSetup = true
+                        }
                     }
                     
                     Button("Delete", systemImage: "trash", role: .destructive) {
@@ -233,7 +247,18 @@ struct ExpenseDetailView: View {
                     .foregroundColor(.orange)
             }
             
-            if let pattern = expense.recurringPattern {
+            if let recurringInfo = expense.recurringInfo {
+                Text(recurringInfo.description)
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+                
+                if let nextDate = expense.nextRecurringDate {
+                    Text("Next: \(nextDate, style: .date)")
+                        .font(.caption2)
+                        .foregroundColor(.orange.opacity(0.8))
+                }
+            } else if let pattern = expense.recurringPattern {
+                // Fallback to old pattern format
                 Text(pattern)
                     .font(.caption2)
                     .foregroundColor(.orange)

@@ -429,8 +429,8 @@ struct ExpenseEditView: View {
     }
     
     private var recurringExpenseSection: some View {
-        Section("Recurring Expense") {
-            Toggle("Mark as Recurring", isOn: $viewModel.isRecurring)
+        Section(isEditing && viewModel.expense?.isRecurring == true ? "Modify Recurring Expense" : "Recurring Expense") {
+            Toggle(isEditing && viewModel.expense?.isRecurring == true ? "Update Recurring Settings" : "Mark as Recurring", isOn: $viewModel.isRecurring)
             
             if viewModel.isRecurring {
                 Picker("Frequency", selection: $viewModel.recurringPattern) {
@@ -472,11 +472,13 @@ struct ExpenseEditView: View {
                 Toggle("Auto-create Next Expense", isOn: $viewModel.autoCreateNext)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Recurring Expense Details")
+                    Text(isEditing && viewModel.expense?.isRecurring == true ? "Update Recurring Settings" : "Recurring Expense Details")
                         .font(.headline)
                         .padding(.top, 4)
                     
-                    Text("This expense will be marked as recurring, which helps with budgeting and expense tracking. You can set reminders for upcoming expenses and automatically create the next occurrence.")
+                    Text(isEditing && viewModel.expense?.isRecurring == true ? 
+                         "Update the recurring settings for this expense. Changes will affect future occurrences." :
+                         "This expense will be marked as recurring, which helps with budgeting and expense tracking. You can set reminders for upcoming expenses and automatically create the next occurrence.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
