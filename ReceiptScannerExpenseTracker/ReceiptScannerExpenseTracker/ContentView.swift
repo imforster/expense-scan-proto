@@ -419,6 +419,20 @@ struct ContentView: View {
                     }
 
                     Section(header: Text("Data")) {
+                        NavigationLink(destination: SimpleRecurringListView()) {
+                            HStack {
+                                Image(systemName: "repeat")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(AppTheme.Colors.primary)
+
+                                Text("Recurring Expenses")
+                                    .font(.body)
+
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        
                         HStack {
                             Image(systemName: "icloud.fill")
                                 .font(.system(size: 24))

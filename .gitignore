@@ -114,3 +114,13 @@ iOSInjectionProject/
 # Backup files
 *.bak
 *.backup
+
+# Git-related files and directories
+.git/
+**/.git/
+*.git
+.gitignore_global
+.gitconfig_local
+
+# Prevent nested git repositories
+**/.git/**
