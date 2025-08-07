@@ -79,6 +79,7 @@ struct CurrencyRow: View {
             }
             .padding(.vertical, 4)
             .contentShape(Rectangle()) // Ensures the entire row area is tappable
+            .contentShape(Rectangle()) // Ensures the entire row area is tappable
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityElement(children: .combine)
