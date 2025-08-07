@@ -76,10 +76,15 @@ struct CurrencyRow: View {
                 Spacer()
                 // Selection indicator
                 if isSelected { Image(systemName: "checkmark.circle.fill").foregroundColor(.blue).font(.title3) }
-            }.padding(.vertical, 4)
-        }.buttonStyle(PlainButtonStyle()).accessibilityElement(children: .combine).accessibilityLabel(
-            "\(currency.name), \(currency.code)"
-        ).accessibilityHint(isSelected ? "Currently selected" : "Tap to select").accessibilityAddTraits(.isButton)
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle()) // Ensures the entire row area is tappable
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(currency.name), \(currency.code)")
+        .accessibilityHint(isSelected ? "Currently selected" : "Tap to select")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
