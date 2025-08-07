@@ -5,8 +5,8 @@ class UserSettingsService: ObservableObject {
     static let shared = UserSettingsService()
     
     private init() {
-        // Initialize with current values from UserDefaults
-        _preferredCurrencyCode = Published(initialValue: UserDefaults.standard.string(forKey: Keys.preferredCurrencyCode) ?? CurrencyService.shared.getLocalCurrencyCode())
+        // Initialize with current values from UserDefaults, defaulting to CAD for Canadian users
+        _preferredCurrencyCode = Published(initialValue: UserDefaults.standard.string(forKey: Keys.preferredCurrencyCode) ?? "CAD")
     }
     
     // MARK: - Keys
@@ -30,7 +30,7 @@ class UserSettingsService: ObservableObject {
     
     /// Reset all settings to defaults
     func resetToDefaults() {
-        preferredCurrencyCode = CurrencyService.shared.getLocalCurrencyCode()
+        preferredCurrencyCode = "CAD"
     }
     
     /// Get the default currency code for new expenses

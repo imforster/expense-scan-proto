@@ -8,10 +8,10 @@ class CurrencyService {
 
     /// Popular currencies with their codes, names, and symbols
     static let popularCurrencies: [CurrencyInfo] = [
+        CurrencyInfo(code: "CAD", name: "Canadian Dollar", symbol: "C$"),
         CurrencyInfo(code: "USD", name: "US Dollar", symbol: "$"), CurrencyInfo(code: "EUR", name: "Euro", symbol: "€"),
         CurrencyInfo(code: "GBP", name: "British Pound", symbol: "£"),
         CurrencyInfo(code: "JPY", name: "Japanese Yen", symbol: "¥"),
-        CurrencyInfo(code: "CAD", name: "Canadian Dollar", symbol: "C$"),
         CurrencyInfo(code: "AUD", name: "Australian Dollar", symbol: "A$"),
         CurrencyInfo(code: "CHF", name: "Swiss Franc", symbol: "CHF"),
         CurrencyInfo(code: "CNY", name: "Chinese Yuan", symbol: "¥"),
@@ -29,7 +29,7 @@ class CurrencyService {
         CurrencyInfo(code: "ZAR", name: "South African Rand", symbol: "R")
     ]
     /// Get the local currency code based on the user's locale
-    func getLocalCurrencyCode() -> String { return Locale.current.currency?.identifier ?? "USD" }
+    func getLocalCurrencyCode() -> String { return Locale.current.currency?.identifier ?? "CAD" }
     /// Get the user's preferred currency code (from settings or local currency as fallback)
     func getPreferredCurrencyCode() -> String {
         return UserDefaults.standard.string(forKey: "preferredCurrencyCode") ?? getLocalCurrencyCode()
