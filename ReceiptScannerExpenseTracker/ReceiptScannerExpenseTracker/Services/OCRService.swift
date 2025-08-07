@@ -15,6 +15,8 @@ struct ReceiptData {
     let paymentMethod: String?
     let receiptNumber: String?
     let confidence: Float
+    let currencyCode: String?
+    let rawTextContent: String?
 }
 
 struct ReceiptItemData {
@@ -191,6 +193,9 @@ class ReceiptParser {
         // You would further process other extracted fields like tax, items, etc.
         // For now, we'll keep them as nil or default values.
         
+        // Detect currency from text
+        let currencyCode = CurrencyService.shared.detectCurrencyFromText(text)
+        
         return ReceiptData(
             merchantName: merchantName,
             date: date,
@@ -199,7 +204,9 @@ class ReceiptParser {
             items: nil, // To be extracted from ML output
             paymentMethod: nil,
             receiptNumber: nil,
-            confidence: 0.9 // Placeholder confidence
+            confidence: 0.9, // Placeholder confidence
+            currencyCode: currencyCode,
+            rawTextContent: text
         )
     }
     

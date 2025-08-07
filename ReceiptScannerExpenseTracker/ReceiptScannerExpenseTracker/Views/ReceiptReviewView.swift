@@ -76,6 +76,9 @@ struct ReceiptReviewView: View {
             } message: {
                 Text("You have unsaved changes. Are you sure you want to leave?")
             }
+            .sheet(isPresented: $viewModel.showingCurrencyPicker) {
+                CurrencySelectionView(selectedCurrencyCode: $viewModel.currencyCode)
+            }
         }
     }
     
@@ -213,6 +216,40 @@ struct ReceiptReviewView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(viewModel.shouldHighlightPaymentMethod ? Color.orange : Color.clear, lineWidth: 2)
                 )
+            }
+            
+            // Currency Selection
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Currency")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Button(action: {
+                    viewModel.showingCurrencyPicker = true
+                }) {
+                    HStack {
+                        if let currencyInfo = viewModel.selectedCurrencyInfo {
+                            Text(currencyInfo.symbol)
+                                .fontWeight(.medium)
+                            Text(currencyInfo.displayName)
+                                .foregroundColor(.primary)
+                        } else {
+                            Text("Select Currency")
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
             
             // Receipt Number
@@ -665,7 +702,9 @@ struct ReceiptItemEditModel {
             ],
             paymentMethod: "Visa",
             receiptNumber: "12345",
-            confidence: 0.85
+            confidence: 0.85,
+            currencyCode: "USD",
+            rawTextContent: "Sample receipt text"
         ),
         originalImage: UIImage(systemName: "doc.text") ?? UIImage()
     )

@@ -8,6 +8,7 @@ extension Receipt {
     }
 
     @NSManaged public var confidence: Float
+    @NSManaged public var currencyCode: String
     @NSManaged public var date: Date
     @NSManaged public var dateProcessed: Date
     @NSManaged public var id: UUID
@@ -42,6 +43,17 @@ extension Receipt {
     public var safeItems: [ReceiptItem] {
         let itemSet = items as? Set<ReceiptItem> ?? []
         return Array(itemSet)
+    }
+    
+    // Currency formatting methods
+    public func formattedTaxAmount() -> String {
+        // Safety check for deleted or invalid objects
+        guard !isDeleted, managedObjectContext != nil else {
+            return "$0.00"
+        }
+        
+        let taxAmountValue = taxAmount ?? NSDecimalNumber.zero
+        return CurrencyService.shared.formatAmount(taxAmountValue, currencyCode: currencyCode)
     }
 }
 

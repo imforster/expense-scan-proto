@@ -8,6 +8,7 @@ extension Expense {
 
     @NSManaged public var id: UUID
     @NSManaged public var amount: NSDecimalNumber
+    @NSManaged public var currencyCode: String
     @NSManaged public var date: Date
     @NSManaged public var merchant: String
     @NSManaged public var notes: String?
@@ -26,10 +27,7 @@ extension Expense {
         }
         
         do {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .currency
-            formatter.currencyCode = "USD" // This should be configurable in a real app
-            return formatter.string(from: amount) ?? "$0.00"
+            return CurrencyService.shared.formatAmount(amount, currencyCode: currencyCode)
         } catch {
             // Fallback if amount property is inaccessible
             return "$0.00"
@@ -94,6 +92,7 @@ extension Expense {
         expense.notes = "Sample expense for testing"
         expense.paymentMethod = "Credit Card"
         expense.isRecurring = false
+        expense.currencyCode = CurrencyService.shared.getPreferredCurrencyCode()
         
         // Get a default category
         let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
@@ -142,6 +141,7 @@ extension Expense {
             expense.paymentMethod = i % 2 == 0 ? "Credit Card" : "Cash"
             expense.isRecurring = i % 3 == 0
             expense.category = availableCategories[i % availableCategories.count]
+            expense.currencyCode = CurrencyService.shared.getPreferredCurrencyCode()
             
             expenses.append(expense)
         }
