@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Swift Code Quality Check",
+  "description": "Automatically checks Swift files for common issues, unused imports, potential memory leaks, and code style compliance when saved",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "**/*.swift"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A Swift file has been saved. Please analyze the code for:\n\n1. **Unused imports** - Check for import statements that are not being used in the file\n2. **Potential memory leaks** - Look for retain cycles, strong reference cycles, and missing weak/unowned references\n3. **Code style issues** - Verify adherence to Swift conventions and project standards\n4. **Common Swift issues** - Check for force unwrapping, implicitly unwrapped optionals in inappropriate places, and other Swift best practices\n\nUse available tools like swiftlint and swift formatter to perform comprehensive analysis. Provide specific recommendations for improvements and highlight any critical issues that need immediate attention.\n\nFocus on:\n- Import optimization\n- Memory management best practices\n- Code formatting and style consistency\n- Swift language best practices\n- Project-specific conventions"
+  }
+}

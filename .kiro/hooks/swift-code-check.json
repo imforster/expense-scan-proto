@@ -1,0 +1,19 @@
+{
+  "name": "Swift Code Quality Check",
+  "description": "Automatically check Swift files for code style, unused imports, and common issues when saved",
+  "trigger": {
+    "type": "file_save",
+    "filePattern": "**/*.swift"
+  },
+  "action": {
+    "type": "agent_execution",
+    "request": "Analyze the saved Swift file for code quality issues:\n\n1. Run SwiftLint to check for style violations and common issues\n2. Run Swift formatter to ensure consistent formatting\n3. Check for unused imports\n4. Look for potential memory leaks (retain cycles, strong references)\n5. Verify code follows project conventions\n6. Suggest fixes for any issues found\n\nUse the following tools in order:\n- `swiftlint` for linting\n- `swift-format` for formatting\n- Manual analysis for unused imports and memory leak patterns\n\nProvide a summary of findings and any recommended fixes.",
+    "context": [
+      "#File"
+    ]
+  },
+  "settings": {
+    "autoApprove": false,
+    "showInUI": true
+  }
+}

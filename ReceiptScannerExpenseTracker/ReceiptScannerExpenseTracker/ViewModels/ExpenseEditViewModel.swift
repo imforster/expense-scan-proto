@@ -30,6 +30,8 @@ class ExpenseEditViewModel: ObservableObject {
     @Published var tags: [Tag] = []
     @Published var expenseItems: [ExpenseItemEdit] = []
     @Published var expenseContexts: Set<ExpenseContext> = []
+    @Published var currencyCode: String = ""
+    @Published var selectedCurrencyInfo: CurrencyInfo?
     
     // Receipt splitting
     @Published var isReceiptSplitMode: Bool = false
@@ -42,6 +44,7 @@ class ExpenseEditViewModel: ObservableObject {
     @Published var showingCategoryPicker: Bool = false
     @Published var showingTagPicker: Bool = false
     @Published var showingReceiptSplitView: Bool = false
+    @Published var showingCurrencyPicker: Bool = false
     
     // Available data
     @Published var availableCategories: [Category] = []
@@ -50,6 +53,7 @@ class ExpenseEditViewModel: ObservableObject {
     
     private let context: NSManagedObjectContext
     private let categoryService: CategoryServiceProtocol
+    private let currencyService = CurrencyService.shared
     var expense: Expense?
     private var cancellables = Set<AnyCancellable>()
     
@@ -63,6 +67,7 @@ class ExpenseEditViewModel: ObservableObject {
         
         setupObservers()
         loadInitialData()
+        initializeCurrency()
         
         if let expense = expense {
             populateFromExpense(expense)
@@ -89,6 +94,23 @@ class ExpenseEditViewModel: ObservableObject {
                 self?.validateReceiptSplits()
             }
             .store(in: &cancellables)
+        
+        // Watch for currency code changes to update currency info
+        $currencyCode
+            .sink { [weak self] code in
+                self?.updateSelectedCurrencyInfo(code)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func initializeCurrency() {
+        // Set default currency to user's preferred currency
+        currencyCode = currencyService.getPreferredCurrencyCode()
+        updateSelectedCurrencyInfo(currencyCode)
+    }
+    
+    private func updateSelectedCurrencyInfo(_ code: String) {
+        selectedCurrencyInfo = currencyService.getCurrencyInfo(for: code)
     }
     
     private func loadInitialData() {
@@ -114,6 +136,7 @@ class ExpenseEditViewModel: ObservableObject {
         notes = expense.notes ?? ""
         paymentMethod = expense.paymentMethod ?? ""
         isRecurring = expense.isRecurring
+        currencyCode = expense.currencyCode
         
         // Extract recurring pattern information from notes if present
         if isRecurring {
@@ -671,6 +694,7 @@ class ExpenseEditViewModel: ObservableObject {
         expense.amount = NSDecimalNumber(string: amount)
         expense.date = date
         expense.merchant = merchant
+        expense.currencyCode = currencyCode
         
         // Handle category assignment with proper context safety
         if let selectedCategory = selectedCategory {
