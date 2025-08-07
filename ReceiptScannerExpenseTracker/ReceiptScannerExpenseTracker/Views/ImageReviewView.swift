@@ -264,7 +264,7 @@ struct ImageReviewView: View {
                     self.processedImage = processedImage
     
                     self.extractedReceiptData =  ReceiptData(merchantName: "Manual Entry", date: Date(), totalAmount: 0, taxAmount: nil,
-                        items: [], paymentMethod: nil, receiptNumber: nil, confidence: 0.0)
+                        items: [], paymentMethod: nil, receiptNumber: nil, confidence: 0.0, currencyCode: CurrencyService.shared.getLocalCurrencyCode(), rawTextContent: nil)
                     isProcessing = false
                     self.showReceiptReview = true
                 }

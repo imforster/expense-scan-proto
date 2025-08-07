@@ -5,10 +5,7 @@ import CoreData
 public class Receipt: NSManagedObject {
     // Convenience methods
     func formattedTotalAmount() -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
-        return formatter.string(from: totalAmount as NSNumber) ?? "$0.00"
+        return CurrencyService.shared.formatAmount(totalAmount, currencyCode: currencyCode)
     }
     
     func formattedDate() -> String {

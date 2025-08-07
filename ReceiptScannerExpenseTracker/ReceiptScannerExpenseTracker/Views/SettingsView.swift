@@ -3,10 +3,28 @@ import SwiftUI
 /// Settings view with theme selection and other app preferences
 struct SettingsView: View {
     @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var userSettings = UserSettingsService.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var showingCurrencyPicker = false
     
     var body: some View {
         List {
+            // Currency Selection Section
+            Section {
+                CurrencySettingRow(
+                    selectedCurrencyCode: userSettings.preferredCurrencyCode,
+                    onTap: {
+                        showingCurrencyPicker = true
+                    }
+                )
+            } header: {
+                Text("Currency")
+                    .font(.headline)
+            } footer: {
+                Text("Set your preferred currency for new expenses. This will be used as the default when creating expenses.")
+                    .font(.caption)
+            }
+            
             // Theme Selection Section
             Section {
                 ForEach(ThemeMode.allCases, id: \.self) { theme in
@@ -36,7 +54,7 @@ struct SettingsView: View {
                     .font(.headline)
             }
         }
-        .navigationTitle("Appearance")
+        .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -46,6 +64,64 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(themeManager.colorScheme)
+        .sheet(isPresented: $showingCurrencyPicker) {
+            CurrencySelectionView(selectedCurrencyCode: $userSettings.preferredCurrencyCode)
+        }
+    }
+}
+
+/// Currency setting row
+struct CurrencySettingRow: View {
+    let selectedCurrencyCode: String
+    let onTap: () -> Void
+    
+    private var currencyInfo: CurrencyInfo? {
+        CurrencyService.shared.getCurrencyInfo(for: selectedCurrencyCode)
+    }
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "dollarsign.circle")
+                .foregroundColor(.blue)
+                .frame(width: 24, height: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Default Currency")
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                Text("Used for new expenses")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 4) {
+                if let currencyInfo = currencyInfo {
+                    Text(currencyInfo.symbol)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    Text(currencyInfo.code)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text(selectedCurrencyCode)
+                        .foregroundColor(.secondary)
+                }
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
+        .accessibilityLabel("Default currency: \(currencyInfo?.displayName ?? selectedCurrencyCode)")
+        .accessibilityHint("Tap to change default currency")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -138,10 +214,22 @@ struct ThemePreviewCard: View {
                 
                 Spacer()
                 
-                Text("$4.50")
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(CurrencyService.shared.formatAmount(NSDecimalNumber(value: 4.50), currencyCode: UserSettingsService.shared.preferredCurrencyCode))
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    if UserSettingsService.shared.preferredCurrencyCode != CurrencyService.shared.getLocalCurrencyCode() {
+                        Text(UserSettingsService.shared.preferredCurrencyCode)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(4)
+                    }
+                }
             }
             .padding()
             .background(Color(.tertiarySystemBackground))

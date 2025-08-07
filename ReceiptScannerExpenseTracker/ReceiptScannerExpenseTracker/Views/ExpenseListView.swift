@@ -171,6 +171,7 @@ struct ExpenseListView: View {
 struct ExpenseRowView: View {
     let expense: Expense
     let onTap: () -> Void
+    @StateObject private var userSettings = UserSettingsService.shared
     
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -209,10 +210,23 @@ struct ExpenseRowView: View {
                         
                         Spacer()
                         
-                        Text(expense.formattedAmount())
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(expense.formattedAmount())
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            
+                            // Show currency code if not default currency
+                            if expense.currencyCode != userSettings.preferredCurrencyCode {
+                                Text(expense.currencyCode)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color(.systemGray5))
+                                    .cornerRadius(4)
+                            }
+                        }
                     }
                     
                     HStack {
