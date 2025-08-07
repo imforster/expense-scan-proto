@@ -13,6 +13,9 @@ class ReceiptReviewViewModel: ObservableObject {
     @Published var paymentMethod: String?
     @Published var receiptNumber: String = ""
     @Published var items: [ReceiptItemEditModel] = []
+    @Published var currencyCode: String = ""
+    @Published var selectedCurrencyInfo: CurrencyInfo?
+    @Published var showingCurrencyPicker: Bool = false
     
     @Published var isSaving: Bool = false
     @Published var showValidationError: Bool = false
@@ -26,6 +29,7 @@ class ReceiptReviewViewModel: ObservableObject {
     private let originalReceiptData: ReceiptData
     let originalImage: UIImage
     private let coreDataManager = CoreDataManager.shared
+    private let currencyService = CurrencyService.shared
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Computed Properties
@@ -148,8 +152,31 @@ class ReceiptReviewViewModel: ObservableObject {
             items = receiptItems.map { ReceiptItemEditModel(from: $0) }
         }
         
+        // Setup currency
+        setupCurrency()
+        
         // Setup change tracking
         setupChangeTracking()
+    }
+    
+    private func setupCurrency() {
+        // Try to detect currency from receipt text first
+        if let rawText = originalReceiptData.rawTextContent,
+           let detectedCurrency = currencyService.detectCurrencyFromText(rawText) {
+            currencyCode = detectedCurrency
+        } else {
+            // Fall back to user's preferred currency
+            currencyCode = currencyService.getPreferredCurrencyCode()
+        }
+        
+        selectedCurrencyInfo = currencyService.getCurrencyInfo(for: currencyCode)
+        
+        // Watch for currency code changes
+        $currencyCode
+            .sink { [weak self] code in
+                self?.selectedCurrencyInfo = self?.currencyService.getCurrencyInfo(for: code)
+            }
+            .store(in: &cancellables)
     }
     
     private func setupChangeTracking() {
@@ -197,6 +224,13 @@ class ReceiptReviewViewModel: ObservableObject {
             .store(in: &cancellables)
         
         $items
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.hasUnsavedChanges = true
+            }
+            .store(in: &cancellables)
+        
+        $currencyCode
             .dropFirst()
             .sink { [weak self] _ in
                 self?.hasUnsavedChanges = true
@@ -434,6 +468,7 @@ class ReceiptReviewViewModel: ObservableObject {
             receipt.confidence = self.originalReceiptData.confidence
             receipt.dateProcessed = Date()
             receipt.rawTextContent = "" // This would come from OCR if available
+            receipt.currencyCode = self.currencyCode
             
             // Set optional fields
             if let taxAmount = Decimal(string: self.taxAmountText), !self.taxAmountText.isEmpty {
@@ -480,6 +515,7 @@ class ReceiptReviewViewModel: ObservableObject {
             expense.notes = "Created from receipt scan"
             expense.receipt = receipt
             expense.paymentMethod = receipt.paymentMethod
+            expense.currencyCode = self.currencyCode
             
             // Set default category (this could be enhanced with ML categorization)
             expense.category = self.getDefaultCategory(for: self.merchantName, in: context)

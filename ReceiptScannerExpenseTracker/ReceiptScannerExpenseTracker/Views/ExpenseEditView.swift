@@ -86,6 +86,9 @@ struct ExpenseEditView: View {
             .sheet(isPresented: $viewModel.showingReceiptSplitView) {
                 ReceiptSplitView(viewModel: viewModel)
             }
+            .sheet(isPresented: $viewModel.showingCurrencyPicker) {
+                CurrencySelectionView(selectedCurrencyCode: $viewModel.currencyCode)
+            }
         }
         .task {
             await viewModel.detectRecurringExpense()
@@ -96,15 +99,46 @@ struct ExpenseEditView: View {
     
     private var basicInformationSection: some View {
         Section("Basic Information") {
-            // Amount
-            HStack {
-                Text("Amount")
-                Spacer()
-                TextField("$0.00", text: $viewModel.amount)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(width: 100)
+            // Amount with Currency
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Amount")
+                    Spacer()
+                    TextField("0.00", text: $viewModel.amount)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(width: 100)
+                }
+                
+                // Currency Selection
+                HStack {
+                    Text("Currency")
+                    Spacer()
+                    Button(action: {
+                        viewModel.showingCurrencyPicker = true
+                    }) {
+                        HStack(spacing: 4) {
+                            if let currencyInfo = viewModel.selectedCurrencyInfo {
+                                Text(currencyInfo.symbol)
+                                    .fontWeight(.medium)
+                                Text(currencyInfo.code)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("Select Currency")
+                                    .foregroundColor(.secondary)
+                            }
+                            Image(systemName: "chevron.down")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
             
             // Date
