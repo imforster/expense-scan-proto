@@ -203,7 +203,7 @@ struct ContentView: View {
                     // Demo content for home screen
                     CardView {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Welcome to Receipt Scanner")
+                            Text("Welcome to the ExpenseQuest Receipt Scanner")
                                 .font(AppTheme.Typography.headingFont)
                                 .foregroundColor(.primary)
 
@@ -223,9 +223,15 @@ struct ContentView: View {
 
                     // Recent transactions section
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Recent Transactions")
-                            .font(AppTheme.Typography.subheadingFont)
-                            .padding(.horizontal)
+                        HStack {
+                            Text("Recent Transactions")
+                                .font(AppTheme.Typography.subheadingFont)
+                            Spacer()
+                            Button("All >") { selectedTab = 2 }
+                                .font(AppTheme.Typography.captionFont)
+                                .foregroundColor(AppTheme.primaryColor)
+                        }
+                        .padding(.horizontal)
 
                         if expenseViewModel.isLoading {
                             // Loading state for recent transactions
@@ -276,13 +282,8 @@ struct ContentView: View {
                                 }
                             }
                         }
-
-                        SecondaryButton(title: "View All Expenses") {
-                            selectedTab = 2
-                        }
-                        .padding(.horizontal)
                     }
-                    .padding(.top)
+                    .padding(.bottom)
                 }
                 .padding(.vertical)
             }
