@@ -17,6 +17,7 @@ extension Category {
     @NSManaged public var expenses: NSSet?
     @NSManaged public var parentCategory: Category?
     @NSManaged public var subcategories: NSSet?
+    @NSManaged public var recurringExpenses: NSSet?
     
     // Convenience properties
     public var safeIcon: String {
@@ -40,6 +41,11 @@ extension Category {
     public var safeSubcategories: [Category] {
         let subcategorySet = subcategories as? Set<Category> ?? []
         return Array(subcategorySet)
+    }
+    
+    public var safeRecurringExpenses: [RecurringExpense] {
+        let recurringExpenseSet = recurringExpenses as? Set<RecurringExpense> ?? []
+        return Array(recurringExpenseSet)
     }
 }
 
@@ -91,5 +97,22 @@ extension Category {
 
     @objc(removeSubcategories:)
     @NSManaged public func removeFromSubcategories(_ values: NSSet)
+
+}
+
+// MARK: Generated accessors for recurringExpenses
+extension Category {
+
+    @objc(addRecurringExpensesObject:)
+    @NSManaged public func addToRecurringExpenses(_ value: RecurringExpense)
+
+    @objc(removeRecurringExpensesObject:)
+    @NSManaged public func removeFromRecurringExpenses(_ value: RecurringExpense)
+
+    @objc(addRecurringExpenses:)
+    @NSManaged public func addToRecurringExpenses(_ values: NSSet)
+
+    @objc(removeRecurringExpenses:)
+    @NSManaged public func removeFromRecurringExpenses(_ values: NSSet)
 
 }
