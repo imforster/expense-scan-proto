@@ -42,6 +42,7 @@ class ExpenseListViewModel: ObservableObject {
     @Published var selectedDateRange: DateRange = .all
     @Published var selectedAmountRange: AmountRange = .all
     @Published var selectedVendor: String? = nil
+    @Published var selectedRecurringStatus: RecurringStatus = .all
     @Published var customDateRange: DateInterval? = nil
     @Published var customAmountRange: ClosedRange<Decimal>? = nil
     
@@ -117,23 +118,28 @@ class ExpenseListViewModel: ObservableObject {
             $selectedAmountRange
         )
         .combineLatest(
-            Publishers.CombineLatest4(
-                $selectedVendor,
-                $customDateRange,
-                $customAmountRange,
+            Publishers.CombineLatest(
+                Publishers.CombineLatest4(
+                    $selectedVendor,
+                    $selectedRecurringStatus,
+                    $customDateRange,
+                    $customAmountRange
+                ),
                 $sortOption
             )
         )
         .sink { [weak self] filterData, additionalData in
+            let (additionalFilterData, sortOption) = additionalData
             self?.updateFilterCriteria(
                 searchText: filterData.0,
                 category: filterData.1,
                 dateRange: filterData.2,
                 amountRange: filterData.3,
-                vendor: additionalData.0,
-                customDateRange: additionalData.1,
-                customAmountRange: additionalData.2,
-                sortOption: additionalData.3
+                vendor: additionalFilterData.0,
+                recurringStatus: additionalFilterData.1,
+                customDateRange: additionalFilterData.2,
+                customAmountRange: additionalFilterData.3,
+                sortOption: sortOption
             )
         }
         .store(in: &cancellables)
@@ -190,6 +196,7 @@ class ExpenseListViewModel: ObservableObject {
         dateRange: DateRange,
         amountRange: AmountRange,
         vendor: String?,
+        recurringStatus: RecurringStatus,
         customDateRange: DateInterval?,
         customAmountRange: ClosedRange<Decimal>?,
         sortOption: ExpenseSortService.SortOption
@@ -200,12 +207,22 @@ class ExpenseListViewModel: ObservableObject {
         
         let categoryData = category.map { CategoryData(id: $0.id, name: $0.name) }
         
+        // Convert recurring status to filter criteria
+        let recurringFilter: RecurringExpenseFilter? = {
+            switch recurringStatus {
+            case .all: return nil
+            case .generatedFromTemplates: return .generatedFromTemplates
+            case .nonRecurring: return .nonRecurring
+            }
+        }()
+        
         filterCriteria = ExpenseFilterService.FilterCriteria(
             searchText: searchText.isEmpty ? nil : searchText,
             category: categoryData,
             dateRange: dateInterval,
             amountRange: amountRangeValue,
-            vendor: vendor
+            vendor: vendor,
+            recurringFilter: recurringFilter
         )
         
         self.sortOption = sortOption
@@ -284,6 +301,7 @@ class ExpenseListViewModel: ObservableObject {
         selectedDateRange = .all
         selectedAmountRange = .all
         selectedVendor = nil
+        selectedRecurringStatus = .all
         customDateRange = nil
         customAmountRange = nil
     }
@@ -434,6 +452,28 @@ class ExpenseListViewModel: ObservableObject {
             case .between25And100: return 25...100
             case .between100And500: return 100...500
             case .over500: return 500...Decimal.greatestFiniteMagnitude
+            }
+        }
+    }
+    
+    enum RecurringStatus: String, CaseIterable {
+        case all = "All Expenses"
+        case generatedFromTemplates = "Generated from Templates"
+        case nonRecurring = "Non-Recurring"
+        
+        var systemImage: String {
+            switch self {
+            case .all: return "list.bullet"
+            case .generatedFromTemplates: return "arrow.triangle.2.circlepath"
+            case .nonRecurring: return "minus.circle"
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .all: return "Show all expenses"
+            case .generatedFromTemplates: return "Show expenses generated from recurring templates"
+            case .nonRecurring: return "Show only regular, non-recurring expenses"
             }
         }
     }
