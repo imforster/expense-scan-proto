@@ -134,12 +134,11 @@
     - Verify users can create, edit, and manage recurring expenses through updated UI seamlessly
     - _Requirements: 4.7_
 
-  - [ ] 4.10.2 Add recurring expense filtering capabilities
+  - [x] 4.10.2 Add recurring expense filtering capabilities
     - Add recurring expense filter to ExpenseFiltersView with options:
       - "All Expenses" (default)
       - "Recurring Templates Only" (show RecurringExpense entities)
       - "Generated from Templates" (expenses with recurringTemplate relationship)
-      - "Legacy Recurring" (expenses with isRecurring=true but no template)
       - "Non-Recurring" (regular expenses)
     - Update ExpenseFilterService to support recurring status filtering
     - Integrate recurring filter with existing category, date, and amount filters
