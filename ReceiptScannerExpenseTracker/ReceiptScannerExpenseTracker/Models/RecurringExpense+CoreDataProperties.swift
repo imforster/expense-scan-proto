@@ -1,7 +1,7 @@
 import Foundation
 import CoreData
 
-extension RecurringExpense {
+extension RecurringExpense: Identifiable {
     
     @nonobjc public class func fetchRequest() -> NSFetchRequest<RecurringExpense> {
         return NSFetchRequest<RecurringExpense>(entityName: "RecurringExpense")

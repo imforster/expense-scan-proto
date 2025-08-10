@@ -116,7 +116,7 @@
     - Verify Core Data implementation works seamlessly and no user data is lost during migration
     - _Requirements: 4.7_
 
-  - [ ] 4.10.1 Update UI components to use new Core Data recurring expense entities
+  - [x] 4.10.1 Update UI components to use new Core Data recurring expense entities
     - Update SimpleRecurringSetupView to create/edit RecurringExpense entities instead of storing in notes
     - Update SimpleRecurringListView to fetch RecurringExpense entities using RecurringExpenseService
     - Update ExpenseDetailView to show recurring info from recurringTemplate relationship

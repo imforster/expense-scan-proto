@@ -90,7 +90,7 @@ struct ExpenseDetailView: View {
                         showingEditView = true
                     }
                     
-                    if expense.isRecurring {
+                    if expense.recurringTemplate != nil || expense.isRecurring {
                         Button("Update Recurring", systemImage: "repeat") {
                             showingRecurringSetup = true
                         }
@@ -211,7 +211,7 @@ struct ExpenseDetailView: View {
                     categoryBadge(category: category)
                 }
                 
-                if expense.isRecurring {
+                if expense.recurringTemplate != nil || expense.isRecurring {
                     recurringBadge
                 }
             }
@@ -238,16 +238,36 @@ struct ExpenseDetailView: View {
     private var recurringBadge: some View {
         VStack(spacing: 4) {
             HStack {
-                Image(systemName: "repeat")
-                    .font(.caption)
-                    .foregroundColor(.orange)
-                
-                Text("Recurring Expense")
-                    .font(.caption)
-                    .foregroundColor(.orange)
+                if expense.recurringTemplate != nil {
+                    Image(systemName: "repeat.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    
+                    Text("Generated from Recurring")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                } else {
+                    Image(systemName: "repeat")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    
+                    Text("Recurring Expense (Legacy)")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
             }
             
-            if let recurringInfo = expense.recurringInfo {
+            if let recurringTemplate = expense.recurringTemplate,
+               let pattern = recurringTemplate.pattern {
+                Text(pattern.description)
+                    .font(.caption2)
+                    .foregroundColor(.blue)
+                
+                Text("Next: \(pattern.nextDueDate, style: .date)")
+                    .font(.caption2)
+                    .foregroundColor(.blue.opacity(0.8))
+            } else if let recurringInfo = expense.recurringInfo {
+                // Legacy notes-based recurring info
                 Text(recurringInfo.description)
                     .font(.caption2)
                     .foregroundColor(.orange)
@@ -266,7 +286,7 @@ struct ExpenseDetailView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color.orange.opacity(0.1))
+        .background((expense.recurringTemplate != nil ? Color.blue : Color.orange).opacity(0.1))
         .cornerRadius(12)
     }
     
@@ -285,7 +305,11 @@ struct ExpenseDetailView: View {
                         DetailRow(label: "Payment Method", value: expense.safePaymentMethod)
                     }
                     
-                    DetailRow(label: "Recurring", value: expense.isRecurring ? "Yes" : "No")
+                    if expense.recurringTemplate != nil {
+                        DetailRow(label: "Recurring", value: "Generated from Template")
+                    } else {
+                        DetailRow(label: "Recurring", value: expense.isRecurring ? "Yes (Legacy)" : "No")
+                    }
                 }
             }
         }
