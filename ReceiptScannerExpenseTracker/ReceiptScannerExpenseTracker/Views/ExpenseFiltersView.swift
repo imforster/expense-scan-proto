@@ -35,6 +35,11 @@ struct ExpenseFiltersView: View {
                         vendorFilterContent
                     }
                     
+                    // Recurring Status Filter
+                    filterSection(title: "Recurring Status", icon: "arrow.triangle.2.circlepath") {
+                        recurringStatusFilterContent
+                    }
+                    
                     // Action Buttons
                     VStack(spacing: 12) {
                         PrimaryButton(title: "Apply Filters") {
@@ -174,6 +179,19 @@ struct ExpenseFiltersView: View {
                     isSelected: viewModel.selectedVendor == vendor
                 ) {
                     viewModel.selectedVendor = vendor
+                }
+            }
+        }
+    }
+    
+    private var recurringStatusFilterContent: some View {
+        VStack(spacing: 8) {
+            ForEach(ExpenseListViewModel.RecurringStatus.allCases, id: \.self) { recurringStatus in
+                RecurringStatusFilterRow(
+                    recurringStatus: recurringStatus,
+                    isSelected: viewModel.selectedRecurringStatus == recurringStatus
+                ) {
+                    viewModel.selectedRecurringStatus = recurringStatus
                 }
             }
         }
@@ -391,6 +409,46 @@ struct VendorFilterRow: View {
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
+    }
+}
+
+struct RecurringStatusFilterRow: View {
+    let recurringStatus: ExpenseListViewModel.RecurringStatus
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: recurringStatus.systemImage)
+                    .foregroundColor(AppTheme.primaryColor)
+                    .frame(width: 20)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(recurringStatus.rawValue)
+                        .foregroundColor(.primary)
+                        .font(.body)
+                    
+                    Text(recurringStatus.description)
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(AppTheme.primaryColor)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
+        .accessibilityLabel(recurringStatus.rawValue)
+        .accessibilityHint(recurringStatus.description)
     }
 }
 
