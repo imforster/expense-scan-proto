@@ -17,6 +17,7 @@ extension Expense {
     @NSManaged public var category: Category?
     @NSManaged public var items: NSSet?
     @NSManaged public var receipt: Receipt?
+    @NSManaged public var recurringTemplate: RecurringExpense?
     @NSManaged public var tags: NSSet?
     
     // Convenience methods
