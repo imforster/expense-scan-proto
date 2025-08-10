@@ -102,7 +102,7 @@
     - Verify currency selection defaults to local currency and displays correctly throughout app
     - _Requirements: 2.1, 2.4, 3.1_
 
-  - [ ] 4.10 Migrate recurring expenses to proper Core Data entities
+  - [x] 4.10 Migrate recurring expenses to proper Core Data entities
     - Create RecurringExpense and RecurringPattern Core Data entities for better data management
     - Implement proper separation between recurring templates and generated expense instances
     - Add Core Data constraints and relationships to prevent duplicate recurring templates
@@ -110,12 +110,28 @@
     - Implement data migration service to convert existing notes-based recurring data to new Core Data entities
     - Add migration validation to ensure all existing recurring expenses are preserved during upgrade
     - Implement RecurringExpenseService to replace notes-based storage approach
-    - Update existing UI components to work with new Core Data entities instead of notes parsing
-    - Add proper visual indicators throughout app to distinguish recurring templates vs generated instances
     - Implement advanced duplicate prevention with fuzzy matching algorithms
     - Write comprehensive unit tests for Core Data entities, migration, and RecurringExpenseService
-    - **Quality Gates**: All tests pass, data migration preserves existing recurring expenses, no duplicate templates in recurring view, existing UI works with new data model
-    - Verify all recurring expense functionality works seamlessly with new Core Data approach and no user data is lost
+    - **Quality Gates**: All tests pass, data migration preserves existing recurring expenses, Core Data entities work correctly
+    - Verify Core Data implementation works seamlessly and no user data is lost during migration
+    - _Requirements: 4.7_
+
+  - [ ] 4.10.1 Update UI components to use new Core Data recurring expense entities
+    - Update SimpleRecurringSetupView to create/edit RecurringExpense entities instead of storing in notes
+    - Update SimpleRecurringListView to fetch RecurringExpense entities using RecurringExpenseService
+    - Update ExpenseDetailView to show recurring info from recurringTemplate relationship
+    - Remove dependency on notes-based RecurringInfo parsing throughout the app
+    - Update RecurringExpenseHelper to use new Core Data entities or deprecate if no longer needed
+    - Add proper visual indicators to distinguish recurring templates vs generated expense instances
+    - Implement UI for managing RecurringExpense entities (create, edit, delete, activate/deactivate)
+    - Update expense creation flow to properly link generated expenses to their recurring templates
+    - Add migration trigger in app startup to convert existing notes-based data on first launch
+    - Write UI tests to verify recurring expense management works with new Core Data approach
+    - Validate Core Data implementation is working correctly with user testing
+    - Ask user permission to cleanup old recurring expense tags/annotations from notes field after validation
+    - Implement notes cleanup service to remove recurring-related annotations from migrated expenses
+    - **Quality Gates**: All UI components use Core Data entities, no notes-based storage, existing functionality preserved, user approves notes cleanup
+    - Verify users can create, edit, and manage recurring expenses through updated UI seamlessly
     - _Requirements: 4.7_
 
   - [ ] 4.11 Add automated scheduling and notifications for recurring expenses

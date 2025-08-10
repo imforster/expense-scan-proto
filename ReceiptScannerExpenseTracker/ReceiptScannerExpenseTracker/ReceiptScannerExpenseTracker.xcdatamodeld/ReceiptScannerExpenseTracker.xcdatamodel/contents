@@ -9,6 +9,7 @@
         <relationship name="expenseItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ExpenseItem" inverseName="category" inverseEntity="ExpenseItem"/>
         <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="category" inverseEntity="Expense"/>
         <relationship name="parentCategory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Category" inverseName="subcategories" inverseEntity="Category"/>
+        <relationship name="recurringExpenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RecurringExpense" inverseName="category" inverseEntity="RecurringExpense"/>
         <relationship name="subcategories" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Category" inverseName="parentCategory" inverseEntity="Category"/>
     </entity>
     <entity name="Expense" representedClassName="ReceiptScannerExpenseTrackerExpense" syncable="YES">
@@ -23,6 +24,7 @@
         <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Category" inverseName="expenses" inverseEntity="Category"/>
         <relationship name="items" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ExpenseItem" inverseName="expense" inverseEntity="ExpenseItem"/>
         <relationship name="receipt" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Receipt" inverseName="expense" inverseEntity="Receipt"/>
+        <relationship name="recurringTemplate" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringExpense" inverseName="generatedExpenses" inverseEntity="RecurringExpense"/>
         <relationship name="tags" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Tag" inverseName="expenses" inverseEntity="Tag"/>
     </entity>
     <entity name="ExpenseItem" representedClassName="ReceiptScannerExpenseTrackerExpenseItem" syncable="YES">
@@ -60,9 +62,34 @@
         <relationship name="expenseItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ExpenseItem" inverseName="receiptItem" inverseEntity="ExpenseItem"/>
         <relationship name="receipt" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Receipt" inverseName="items" inverseEntity="Receipt"/>
     </entity>
+    <entity name="RecurringExpense" representedClassName="ReceiptScannerExpenseTrackerRecurringExpense" syncable="YES">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="amount" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="currencyCode" attributeType="String" defaultValueString="USD"/>
+        <attribute name="merchant" attributeType="String"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="paymentMethod" optional="YES" attributeType="String"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastGeneratedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Category" inverseName="recurringExpenses" inverseEntity="Category"/>
+        <relationship name="pattern" maxCount="1" deletionRule="Cascade" destinationEntity="RecurringPattern" inverseName="recurringExpense" inverseEntity="RecurringPattern"/>
+        <relationship name="generatedExpenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="recurringTemplate" inverseEntity="Expense"/>
+        <relationship name="tags" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Tag" inverseName="recurringExpenses" inverseEntity="Tag"/>
+    </entity>
+    <entity name="RecurringPattern" representedClassName="ReceiptScannerExpenseTrackerRecurringPattern" syncable="YES">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="patternType" attributeType="String"/>
+        <attribute name="interval" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="dayOfMonth" optional="YES" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="dayOfWeek" optional="YES" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="nextDueDate" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="recurringExpense" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringExpense" inverseName="pattern" inverseEntity="RecurringExpense"/>
+    </entity>
     <entity name="Tag" representedClassName="ReceiptScannerExpenseTrackerTag" syncable="YES">
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" attributeType="String"/>
         <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="tags" inverseEntity="Expense"/>
+        <relationship name="recurringExpenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RecurringExpense" inverseName="tags" inverseEntity="RecurringExpense"/>
     </entity>
 </model>
