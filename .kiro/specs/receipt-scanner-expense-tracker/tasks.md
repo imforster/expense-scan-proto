@@ -134,6 +134,59 @@
     - Verify users can create, edit, and manage recurring expenses through updated UI seamlessly
     - _Requirements: 4.7_
 
+  - [ ] 4.10.2 Add recurring expense filtering capabilities
+    - Add recurring expense filter to ExpenseFiltersView with options:
+      - "All Expenses" (default)
+      - "Recurring Templates Only" (show RecurringExpense entities)
+      - "Generated from Templates" (expenses with recurringTemplate relationship)
+      - "Legacy Recurring" (expenses with isRecurring=true but no template)
+      - "Non-Recurring" (regular expenses)
+    - Update ExpenseFilterService to support recurring status filtering
+    - Integrate recurring filter with existing category, date, and amount filters
+    - Add tests to verify filtering works correctly for all recurring expense types
+    - **Quality Gates**: Users can filter expenses by recurring status, filter integrates with existing filters
+    - _Requirements: 4.7_
+
+  - [ ] 4.10.3 Detect recurring template relationships in ExpenseEditView
+    - Update ExpenseEditView to detect when editing an expense with a recurring template
+    - Add UI indicators showing when an expense is linked to a recurring template
+    - Display template information (pattern, next due date) in edit view
+    - Add visual distinction between template-linked and regular expenses
+    - Implement basic template relationship validation
+    - Add tests to verify template detection works correctly
+    - **Quality Gates**: Users can see when editing a template-linked expense, clear visual indicators
+    - _Requirements: 4.7_
+
+  - [ ] 4.10.4 Implement template synchronization service methods
+    - Update RecurringExpenseService to provide template synchronization methods
+    - Add methods for updating template from expense changes
+    - Add methods for updating expense from template changes
+    - Implement validation to prevent orphaned recurring templates
+    - Add conflict resolution for simultaneous template/expense updates
+    - Add comprehensive tests for synchronization service methods
+    - **Quality Gates**: Service methods handle template synchronization reliably, no data corruption
+    - _Requirements: 4.7_
+
+  - [ ] 4.10.5 Add user choice UI for template updates
+    - Add option to "Update Template" or "Update Only This Expense" when editing recurring expenses
+    - Implement modal/alert dialog for user choice when changes are detected
+    - Handle edge cases where user wants to break the link between expense and template
+    - Add "Always ask" vs "Remember my choice" preferences
+    - Ensure category, amount, merchant, and other field changes trigger the choice dialog
+    - Add tests to verify user choice UI works correctly
+    - **Quality Gates**: Users have control over sync behavior, clear choice options, preferences respected
+    - _Requirements: 4.7_
+
+  - [ ] 4.10.6 Implement bidirectional template synchronization
+    - Implement bidirectional synchronization between expense and recurring template changes
+    - Ensure all field changes (category, amount, merchant, notes, tags) sync properly
+    - Handle synchronization conflicts and edge cases
+    - Add rollback capability if synchronization fails
+    - Implement batch updates for multiple field changes
+    - Add comprehensive integration tests for bidirectional sync
+    - **Quality Gates**: Template and expense data stay synchronized, robust error handling, no data loss
+    - _Requirements: 4.7_
+
   - [ ] 4.11 Add automated scheduling and notifications for recurring expenses
     - Add background task to automatically check and generate due recurring expenses
     - Build notification system for generated recurring expenses with user alerts
