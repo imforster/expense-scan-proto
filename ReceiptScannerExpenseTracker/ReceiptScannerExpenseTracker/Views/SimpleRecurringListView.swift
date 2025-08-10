@@ -11,9 +11,10 @@ import CoreData
 struct SimpleRecurringListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
-    @State private var recurringExpenses: [Expense] = []
+    @State private var recurringExpenses: [RecurringExpense] = []
     @State private var showingGenerateAlert = false
     @State private var generatedCount = 0
+    @State private var recurringExpenseService: RecurringExpenseService?
     
     var body: some View {
         NavigationView {
@@ -25,8 +26,8 @@ struct SimpleRecurringListView: View {
                         description: Text("Mark expenses as recurring to see them here")
                     )
                 } else {
-                    ForEach(recurringExpenses, id: \.id) { expense in
-                        RecurringExpenseRow(expense: expense)
+                    ForEach(recurringExpenses, id: \.id) { recurringExpense in
+                        RecurringExpenseRow(recurringExpense: recurringExpense)
                     }
                 }
             }
@@ -40,6 +41,7 @@ struct SimpleRecurringListView: View {
                 }
             }
             .onAppear {
+                setupService()
                 loadRecurringExpenses()
             }
             .alert("Generated Expenses", isPresented: $showingGenerateAlert) {
@@ -50,29 +52,31 @@ struct SimpleRecurringListView: View {
         }
     }
     
-    private func loadRecurringExpenses() {
-        recurringExpenses = RecurringExpenseHelper.getRecurringExpenses(context: viewContext)
+    private func setupService() {
+        recurringExpenseService = RecurringExpenseService(context: viewContext)
     }
     
-    private func getDueExpenses() -> [Expense] {
-        return RecurringExpenseHelper.getDueRecurringExpenses(context: viewContext)
+    private func loadRecurringExpenses() {
+        guard let service = recurringExpenseService else { return }
+        recurringExpenses = service.getActiveRecurringExpenses()
+    }
+    
+    private func getDueExpenses() -> [RecurringExpense] {
+        guard let service = recurringExpenseService else { return [] }
+        return service.getDueRecurringExpenses()
     }
     
     private func generateDueExpenses() {
-        let dueExpenses = getDueExpenses()
-        var generated = 0
+        guard let service = recurringExpenseService else { return }
         
-        for expense in dueExpenses {
-            if let _ = RecurringExpenseHelper.generateNextExpense(from: expense, context: viewContext) {
-                generated += 1
-            }
-        }
+        let generatedExpenses = service.generateDueExpenses()
+        generatedCount = generatedExpenses.count
         
-        if generated > 0 {
+        if generatedCount > 0 {
             do {
                 try viewContext.save()
-                generatedCount = generated
                 showingGenerateAlert = true
+                loadRecurringExpenses() // Refresh the list
             } catch {
                 print("Error saving generated expenses: \(error)")
             }
@@ -81,40 +85,38 @@ struct SimpleRecurringListView: View {
 }
 
 struct RecurringExpenseRow: View {
-    let expense: Expense
+    let recurringExpense: RecurringExpense
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(expense.merchant)
+                Text(recurringExpense.merchant)
                     .font(.headline)
                 
                 Spacer()
                 
-                Text(expense.formattedAmount())
+                Text(recurringExpense.formattedAmount())
                     .font(.headline)
                     .foregroundColor(.primary)
             }
             
-            if let recurringInfo = expense.recurringInfo {
-                Text(recurringInfo.description)
+            if let pattern = recurringExpense.pattern {
+                Text(pattern.description)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                if let nextDate = expense.nextRecurringDate {
-                    HStack {
-                        Text("Next due:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Text(nextDate, style: .date)
-                            .font(.caption)
-                            .foregroundColor(nextDate <= Date() ? .orange : .secondary)
-                    }
+                HStack {
+                    Text("Next due:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text(pattern.nextDueDate, style: .date)
+                        .font(.caption)
+                        .foregroundColor(pattern.nextDueDate <= Date() ? .orange : .secondary)
                 }
             }
             
-            if let category = expense.category {
+            if let category = recurringExpense.category {
                 HStack {
                     Image(systemName: category.safeIcon)
                         .foregroundColor(Color(hex: category.colorHex) ?? .blue)
@@ -122,6 +124,23 @@ struct RecurringExpenseRow: View {
                     Text(category.safeName)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+            }
+            
+            // Visual indicator for recurring template
+            HStack {
+                Image(systemName: "repeat.circle.fill")
+                    .foregroundColor(.blue)
+                    .font(.caption)
+                
+                Text("Recurring Template")
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                
+                if !recurringExpense.isActive {
+                    Text("(Inactive)")
+                        .font(.caption)
+                        .foregroundColor(.red)
                 }
             }
         }

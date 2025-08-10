@@ -14,7 +14,7 @@ struct SimpleRecurringSetupView: View {
     
     let expense: Expense
     
-    @State private var selectedPattern: RecurringPattern = .monthly
+    @State private var selectedPattern: RecurringFrequency = .monthly
     @State private var interval: Int = 1
     @State private var dayOfMonth: Int = 1
     @State private var showingDayPicker = false
@@ -22,13 +22,15 @@ struct SimpleRecurringSetupView: View {
     @State private var shouldRemind: Bool = false
     @State private var reminderDays: Int = 1
     @State private var autoCreateNext: Bool = false
+    @State private var recurringExpenseService: RecurringExpenseService?
+    @State private var existingRecurringExpense: RecurringExpense?
     
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Recurring Pattern")) {
                     Picker("Frequency", selection: $selectedPattern) {
-                        ForEach(RecurringPattern.allCases.filter { $0 != .none }, id: \.self) { pattern in
+                        ForEach(RecurringFrequency.allCases.filter { $0 != .none }, id: \.self) { pattern in
                             Text(pattern.rawValue).tag(pattern)
                         }
                     }
@@ -85,21 +87,16 @@ struct SimpleRecurringSetupView: View {
                 }
                 
                 Section(header: Text("Preview")) {
-                    let recurringInfo = RecurringInfo(
-                        pattern: selectedPattern,
-                        interval: interval,
-                        dayOfMonth: showingDayPicker ? dayOfMonth : nil
-                    )
-                    
-                    Text(recurringInfo.description)
+                    Text(getPatternDescription())
                         .foregroundColor(.secondary)
                     
-                    let nextDate = recurringInfo.calculateNextDate(from: expense.date)
-                    Text("Next occurrence: \(nextDate, style: .date)")
-                        .foregroundColor(.secondary)
+                    if let nextDate = nextExpectedDate {
+                        Text("Next occurrence: \(nextDate, style: .date)")
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
-                if expense.isRecurring {
+                if existingRecurringExpense != nil {
                     Section {
                         Button("Remove Recurring Setting", role: .destructive) {
                             removeRecurringInfo()
@@ -107,7 +104,7 @@ struct SimpleRecurringSetupView: View {
                     }
                 }
             }
-            .navigationTitle(expense.isRecurring ? "Update Recurring" : "Set as Recurring")
+            .navigationTitle(existingRecurringExpense != nil ? "Update Recurring" : "Set as Recurring")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -125,6 +122,7 @@ struct SimpleRecurringSetupView: View {
             }
         }
         .onAppear {
+            setupService()
             loadExistingRecurringInfo()
         }
     }
@@ -142,6 +140,10 @@ struct SimpleRecurringSetupView: View {
         }
     }
     
+    private func setupService() {
+        recurringExpenseService = RecurringExpenseService(context: viewContext)
+    }
+    
     private func loadExistingRecurringInfo() {
         // Set default day of month from expense date
         dayOfMonth = Calendar.current.component(.day, from: expense.date)
@@ -149,24 +151,46 @@ struct SimpleRecurringSetupView: View {
         // Set default next expected date
         nextExpectedDate = Calendar.current.date(byAdding: .month, value: 1, to: expense.date)
         
-        // If expense is already recurring, load its settings
-        if expense.isRecurring, let recurringInfo = expense.recurringInfo {
-            selectedPattern = recurringInfo.pattern
-            interval = recurringInfo.interval
+        // Check if expense has a recurring template
+        existingRecurringExpense = expense.recurringTemplate
+        
+        if let recurringExpense = existingRecurringExpense,
+           let pattern = recurringExpense.pattern {
+            // Load settings from Core Data entity
+            if let patternType = RecurringFrequency(rawValue: pattern.patternType) {
+                selectedPattern = patternType
+            }
+            interval = Int(pattern.interval)
             
-            if let existingDayOfMonth = recurringInfo.dayOfMonth {
-                dayOfMonth = existingDayOfMonth
+            if pattern.dayOfMonth > 0 {
+                dayOfMonth = Int(pattern.dayOfMonth)
                 showingDayPicker = true
             } else {
                 showingDayPicker = false
             }
             
             // Calculate next expected date based on recurring pattern
-            nextExpectedDate = recurringInfo.calculateNextDate(from: expense.date)
+            nextExpectedDate = pattern.nextDueDate
+        } else {
+            // Check for legacy notes-based recurring info
+            if expense.isRecurring, let recurringInfo = expense.recurringInfo {
+                // Convert old pattern to new pattern
+                selectedPattern = convertLegacyPattern(recurringInfo.pattern)
+                interval = recurringInfo.interval
+                
+                if let existingDayOfMonth = recurringInfo.dayOfMonth {
+                    dayOfMonth = existingDayOfMonth
+                    showingDayPicker = true
+                } else {
+                    showingDayPicker = false
+                }
+                
+                // Calculate next expected date based on recurring pattern
+                nextExpectedDate = recurringInfo.calculateNextDate(from: expense.date)
+            }
         }
         
         // Load additional recurring properties from expense notes if they exist
-        // These would be stored in a similar format as the recurring pattern
         if let notes = expense.notes {
             // Parse reminder settings
             if notes.contains("[Reminder:") {
@@ -188,38 +212,109 @@ struct SimpleRecurringSetupView: View {
         }
     }
     
+    private func convertLegacyPattern(_ pattern: RecurringPattern) -> RecurringFrequency {
+        switch pattern {
+        case .none:
+            return .none
+        case .weekly:
+            return .weekly
+        case .biweekly:
+            return .biweekly
+        case .monthly:
+            return .monthly
+        case .quarterly:
+            return .quarterly
+        }
+    }
+    
+    private func getPatternDescription() -> String {
+        switch selectedPattern {
+        case .none:
+            return "Not recurring"
+        case .weekly:
+            return interval == 1 ? "Weekly" : "Every \(interval) weeks"
+        case .biweekly:
+            return interval == 1 ? "Bi-weekly" : "Every \(interval * 2) weeks"
+        case .monthly:
+            if showingDayPicker {
+                let suffix = ordinalSuffix(for: dayOfMonth)
+                return interval == 1 ? "Monthly on the \(dayOfMonth)\(suffix)" : "Every \(interval) months on the \(dayOfMonth)\(suffix)"
+            } else {
+                return interval == 1 ? "Monthly" : "Every \(interval) months"
+            }
+        case .quarterly:
+            return interval == 1 ? "Quarterly" : "Every \(interval) quarters"
+        }
+    }
+    
+    private func ordinalSuffix(for number: Int) -> String {
+        let lastDigit = number % 10
+        let lastTwoDigits = number % 100
+        
+        if lastTwoDigits >= 11 && lastTwoDigits <= 13 {
+            return "th"
+        }
+        
+        switch lastDigit {
+        case 1: return "st"
+        case 2: return "nd"
+        case 3: return "rd"
+        default: return "th"
+        }
+    }
+    
     private func saveRecurringInfo() {
-        let recurringInfo = RecurringInfo(
-            pattern: selectedPattern,
-            interval: interval,
-            dayOfMonth: showingDayPicker ? dayOfMonth : nil
-        )
-        
-        expense.setRecurringInfo(recurringInfo)
-        
-        // Save additional recurring properties to notes
-        var notesText = expense.notes ?? ""
-        
-        // Remove any existing reminder and auto-create settings
-        notesText = notesText.replacingOccurrences(of: "\\[Reminder: \\d+ days?\\]", with: "", options: .regularExpression)
-        notesText = notesText.replacingOccurrences(of: "\\[AutoCreate: (true|false)\\]", with: "", options: .regularExpression)
-        
-        // Add reminder setting if enabled
-        if shouldRemind {
-            let reminderText = "\n[Reminder: \(reminderDays) \(reminderDays == 1 ? "day" : "days")]"
-            notesText += reminderText
-        }
-        
-        // Add auto-create setting if enabled
-        if autoCreateNext {
-            notesText += "\n[AutoCreate: true]"
-        }
-        
-        // Clean up any extra newlines
-        notesText = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
-        expense.notes = notesText.isEmpty ? nil : notesText
+        guard let service = recurringExpenseService else { return }
         
         do {
+            if let existingRecurring = existingRecurringExpense {
+                // Update existing recurring expense
+                existingRecurring.amount = expense.amount
+                existingRecurring.currencyCode = expense.currencyCode
+                existingRecurring.merchant = expense.merchant
+                existingRecurring.notes = expense.notes
+                existingRecurring.paymentMethod = expense.paymentMethod
+                existingRecurring.category = expense.category
+                
+                // Update pattern
+                if let pattern = existingRecurring.pattern {
+                    pattern.patternType = selectedPattern.rawValue
+                    pattern.interval = Int32(interval)
+                    pattern.dayOfMonth = showingDayPicker ? Int32(dayOfMonth) : 0
+                    pattern.nextDueDate = nextExpectedDate ?? Date()
+                }
+            } else {
+                // Create new recurring expense
+                let recurringExpense = service.createRecurringExpense(
+                    amount: expense.amount,
+                    currencyCode: expense.currencyCode,
+                    merchant: expense.merchant,
+                    notes: expense.notes,
+                    paymentMethod: expense.paymentMethod,
+                    category: expense.category,
+                    tags: expense.safeTags,
+                    patternType: selectedPattern,
+                    interval: Int32(interval),
+                    dayOfMonth: showingDayPicker ? Int32(dayOfMonth) : nil,
+                    dayOfWeek: nil,
+                    startDate: expense.date
+                )
+                
+                // Link expense to recurring template
+                expense.recurringTemplate = recurringExpense
+                
+                // Clear legacy recurring info
+                expense.isRecurring = false
+                if let notes = expense.notes {
+                    let cleanedNotes = notes.replacingOccurrences(
+                        of: "\\[Recurring:.*?\\]",
+                        with: "",
+                        options: .regularExpression
+                    ).trimmingCharacters(in: .whitespacesAndNewlines)
+                    expense.notes = cleanedNotes.isEmpty ? nil : cleanedNotes
+                }
+            }
+            
             try viewContext.save()
             dismiss()
         } catch {
@@ -228,39 +323,47 @@ struct SimpleRecurringSetupView: View {
     }
     
     private func removeRecurringInfo() {
-        // Set isRecurring to false
-        expense.isRecurring = false
-        
-        // Remove all recurring-related info from notes
-        if let notes = expense.notes {
-            var updatedNotes = notes
-            
-            // Remove the recurring pattern
-            updatedNotes = updatedNotes.replacingOccurrences(
-                of: "\\n?\\[Recurring:.*?\\]", 
-                with: "", 
-                options: .regularExpression
-            )
-            
-            // Remove reminder settings
-            updatedNotes = updatedNotes.replacingOccurrences(
-                of: "\\n?\\[Reminder: \\d+ days?\\]", 
-                with: "", 
-                options: .regularExpression
-            )
-            
-            // Remove auto-create settings
-            updatedNotes = updatedNotes.replacingOccurrences(
-                of: "\\n?\\[AutoCreate: (true|false)\\]", 
-                with: "", 
-                options: .regularExpression
-            )
-            
-            updatedNotes = updatedNotes.trimmingCharacters(in: .whitespacesAndNewlines)
-            expense.notes = updatedNotes.isEmpty ? nil : updatedNotes
-        }
+        guard let service = recurringExpenseService else { return }
         
         do {
+            if let existingRecurring = existingRecurringExpense {
+                // Remove the relationship
+                expense.recurringTemplate = nil
+                
+                // Deactivate the recurring expense
+                service.deactivateRecurringExpense(existingRecurring)
+            }
+            
+            // Clear legacy recurring info
+            expense.isRecurring = false
+            if let notes = expense.notes {
+                var updatedNotes = notes
+                
+                // Remove the recurring pattern
+                updatedNotes = updatedNotes.replacingOccurrences(
+                    of: "\\n?\\[Recurring:.*?\\]", 
+                    with: "", 
+                    options: .regularExpression
+                )
+                
+                // Remove reminder settings
+                updatedNotes = updatedNotes.replacingOccurrences(
+                    of: "\\n?\\[Reminder: \\d+ days?\\]", 
+                    with: "", 
+                    options: .regularExpression
+                )
+                
+                // Remove auto-create settings
+                updatedNotes = updatedNotes.replacingOccurrences(
+                    of: "\\n?\\[AutoCreate: (true|false)\\]", 
+                    with: "", 
+                    options: .regularExpression
+                )
+                
+                updatedNotes = updatedNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+                expense.notes = updatedNotes.isEmpty ? nil : updatedNotes
+            }
+            
             try viewContext.save()
             dismiss()
         } catch {
