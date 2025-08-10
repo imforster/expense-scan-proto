@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Task Branch Setup",
+  "description": "Ensures proper git branch management when starting a task - switches to main branch, updates it, and creates a new feature branch",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "**/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task is being started. Please perform the following git branch management steps:\n\n1. **Check current git status** - Verify the repository state and identify current branch\n2. **Stash any uncommitted changes** - If there are uncommitted changes, stash them safely\n3. **Switch to main branch** - Checkout the main branch (or master if that's the default)\n4. **Update main branch** - Pull the latest changes from origin to ensure main is up-to-date\n5. **Create feature branch** - Create a new feature branch based on the task being started\n\nBranch naming convention:\n- Use format: `feat/[spec-name]-[task-number]` or `feat/[descriptive-name]`\n- Extract the spec name from the current context\n- Make the branch name descriptive and related to the task\n\nError handling:\n- If there are uncommitted changes that can't be stashed, warn the user\n- If main branch update fails, inform the user about potential conflicts\n- If branch creation fails, provide clear error messages\n\nAfter successful setup:\n- Confirm the new branch has been created and checked out\n- Show the current git status\n- Proceed with task execution\n\nUse git commands through the available tools to perform these operations safely and provide clear feedback to the user about each step."
+  }
+}
