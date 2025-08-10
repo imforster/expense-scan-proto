@@ -17,7 +17,7 @@
         "serena-mcp"
       ],
       "env": {},
-      "disabled": false,
+      "disabled": true,
       "autoApprove": []
     },
     "sqlite-context": {
