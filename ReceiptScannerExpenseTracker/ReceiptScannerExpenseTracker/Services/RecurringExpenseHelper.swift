@@ -9,6 +9,8 @@ import Foundation
 import CoreData
 
 /// Simple helper for recurring expense operations
+/// @deprecated This class is deprecated. Use RecurringExpenseService instead for new Core Data entity-based recurring expenses.
+/// This class remains for backward compatibility with legacy notes-based recurring expenses.
 class RecurringExpenseHelper {
     
     /// Generate a new expense from a recurring template
