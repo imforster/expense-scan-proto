@@ -2,6 +2,12 @@ import Foundation
 import Combine
 import os.log
 
+/// Enum for filtering expenses by recurring status
+enum RecurringExpenseFilter {
+    case generatedFromTemplates  // Expenses with recurringTemplate relationship
+    case nonRecurring           // Regular expenses without recurring template
+}
+
 /// Service for filtering expenses with performance optimizations and debouncing
 class ExpenseFilterService {
     
@@ -16,6 +22,7 @@ class ExpenseFilterService {
         let vendor: String?
         let paymentMethod: String?
         let isRecurring: Bool?
+        let recurringFilter: RecurringExpenseFilter?
         let tags: [TagData]
         let hasReceipt: Bool?
         
@@ -27,6 +34,7 @@ class ExpenseFilterService {
             vendor: String? = nil,
             paymentMethod: String? = nil,
             isRecurring: Bool? = nil,
+            recurringFilter: RecurringExpenseFilter? = nil,
             tags: [TagData] = [],
             hasReceipt: Bool? = nil
         ) {
@@ -37,6 +45,7 @@ class ExpenseFilterService {
             self.vendor = vendor?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true ? nil : vendor
             self.paymentMethod = paymentMethod?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true ? nil : paymentMethod
             self.isRecurring = isRecurring
+            self.recurringFilter = recurringFilter
             self.tags = tags
             self.hasReceipt = hasReceipt
         }
@@ -50,6 +59,7 @@ class ExpenseFilterService {
                    vendor == nil &&
                    paymentMethod == nil &&
                    isRecurring == nil &&
+                   recurringFilter == nil &&
                    tags.isEmpty &&
                    hasReceipt == nil
         }
@@ -90,6 +100,15 @@ class ExpenseFilterService {
             
             if let isRecurring = isRecurring {
                 descriptions.append(isRecurring ? "Recurring only" : "Non-recurring only")
+            }
+            
+            if let recurringFilter = recurringFilter {
+                switch recurringFilter {
+                case .generatedFromTemplates:
+                    descriptions.append("Generated from templates")
+                case .nonRecurring:
+                    descriptions.append("Non-recurring only")
+                }
             }
             
             if !tags.isEmpty {
@@ -172,12 +191,25 @@ class ExpenseFilterService {
             logger.debug("After payment method filter: \(filteredExpenses.count) expenses")
         }
         
-        // 5. Recurring filter
+        // 5. Recurring filter (legacy)
         if let isRecurring = criteria.isRecurring {
             filteredExpenses = filteredExpenses.filter { expense in
                 expense.isRecurring == isRecurring
             }
-            logger.debug("After recurring filter: \(filteredExpenses.count) expenses")
+            logger.debug("After legacy recurring filter: \(filteredExpenses.count) expenses")
+        }
+        
+        // 5a. New recurring filter based on template relationships
+        if let recurringFilter = criteria.recurringFilter {
+            filteredExpenses = filteredExpenses.filter { expense in
+                switch recurringFilter {
+                case .generatedFromTemplates:
+                    return expense.recurringTemplate != nil
+                case .nonRecurring:
+                    return expense.recurringTemplate == nil
+                }
+            }
+            logger.debug("After recurring template filter: \(filteredExpenses.count) expenses")
         }
         
         // 6. Receipt filter
