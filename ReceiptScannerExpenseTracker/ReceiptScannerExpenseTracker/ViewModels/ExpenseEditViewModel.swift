@@ -3,6 +3,17 @@ import CoreData
 import SwiftUI
 import Combine
 
+// MARK: - Supporting Types
+
+struct RecurringTemplateInfo {
+    let templateId: UUID
+    let patternDescription: String
+    let nextDueDate: Date?
+    let isActive: Bool
+    let lastGeneratedDate: Date?
+    let totalGeneratedExpenses: Int
+}
+
 // MARK: - Extensions
 
 extension DateFormatter {
@@ -32,6 +43,10 @@ class ExpenseEditViewModel: ObservableObject {
     @Published var expenseContexts: Set<ExpenseContext> = []
     @Published var currencyCode: String = ""
     @Published var selectedCurrencyInfo: CurrencyInfo?
+    
+    // Recurring template detection
+    @Published var hasRecurringTemplate: Bool = false
+    @Published var recurringTemplateInfo: RecurringTemplateInfo?
     
     // Receipt splitting
     @Published var isReceiptSplitMode: Bool = false
@@ -244,6 +259,9 @@ class ExpenseEditViewModel: ObservableObject {
             originalReceiptAmount = receipt.totalAmount.decimalValue
             setupReceiptSplitsFromItems(receiptItems)
         }
+        
+        // Detect recurring template relationship
+        detectRecurringTemplateRelationship(expense)
     }
     
     private func setupReceiptSplitsFromItems(_ receiptItems: [ReceiptItem]) {
@@ -292,6 +310,43 @@ class ExpenseEditViewModel: ObservableObject {
         } catch {
             print("Failed to detect recurring expense: \(error)")
         }
+    }
+    
+    // MARK: - Recurring Template Detection
+    
+    private func detectRecurringTemplateRelationship(_ expense: Expense) {
+        guard let recurringTemplate = expense.recurringTemplate else {
+            hasRecurringTemplate = false
+            recurringTemplateInfo = nil
+            return
+        }
+        
+        hasRecurringTemplate = true
+        
+        // Build template info
+        let patternDescription = recurringTemplate.pattern?.description ?? "Unknown pattern"
+        let nextDueDate = recurringTemplate.pattern?.nextDueDate
+        let totalGenerated = recurringTemplate.safeGeneratedExpenses.count
+        
+        recurringTemplateInfo = RecurringTemplateInfo(
+            templateId: recurringTemplate.id,
+            patternDescription: patternDescription,
+            nextDueDate: nextDueDate,
+            isActive: recurringTemplate.isActive,
+            lastGeneratedDate: recurringTemplate.lastGeneratedDate,
+            totalGeneratedExpenses: totalGenerated
+        )
+    }
+    
+    func validateTemplateRelationship() -> Bool {
+        guard hasRecurringTemplate,
+              let templateInfo = recurringTemplateInfo,
+              let expense = expense else {
+            return true // No template relationship to validate
+        }
+        
+        // Basic validation - ensure the expense is still linked to an active template
+        return templateInfo.isActive
     }
     
     private func analyzeRecurringPattern() async throws -> RecurringExpenseAnalysis {
