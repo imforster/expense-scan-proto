@@ -14,38 +14,11 @@ import CoreData
 class RecurringExpenseHelper {
     
     /// Generate a new expense from a recurring template
+    /// @deprecated This method is no longer functional. Use RecurringExpenseService instead.
     static func generateNextExpense(from template: Expense, context: NSManagedObjectContext) -> Expense? {
-        guard template.isRecurring,
-              let recurringInfo = template.recurringInfo,
-              let nextDate = template.nextRecurringDate else {
-            return nil
-        }
-        
-        // Check if an expense already exists for this date to prevent duplicates
-        if hasExpenseForDate(nextDate, merchant: template.merchant, amount: template.amount, context: context) {
-            return nil
-        }
-        
-        // Create new expense
-        let newExpense = Expense(context: context)
-        newExpense.id = UUID()
-        newExpense.amount = template.amount
-        newExpense.date = nextDate
-        newExpense.merchant = template.merchant
-        newExpense.paymentMethod = template.paymentMethod
-        newExpense.category = template.category
-        newExpense.isRecurring = false // Generated expenses are not recurring themselves
-        
-        // Copy tags
-        if let templateTags = template.tags {
-            newExpense.tags = templateTags
-        }
-        
-        // Set notes indicating this was generated
-        let originalNotes = template.notes?.replacingOccurrences(of: "\\[Recurring:.*?\\]", with: "", options: .regularExpression) ?? ""
-        newExpense.notes = "Generated from recurring expense. \(originalNotes)".trimmingCharacters(in: .whitespaces)
-        
-        return newExpense
+        // Legacy recurring expense functionality has been removed
+        // Use RecurringExpenseService for new recurring expense functionality
+        return nil
     }
     
     /// Check if an expense already exists for the given date/merchant/amount
@@ -68,27 +41,18 @@ class RecurringExpenseHelper {
     }
     
     /// Get all recurring expenses
+    /// @deprecated This method is no longer functional. Use RecurringExpenseService instead.
     static func getRecurringExpenses(context: NSManagedObjectContext) -> [Expense] {
-        let request: NSFetchRequest<Expense> = Expense.fetchRequest()
-        request.predicate = NSPredicate(format: "isRecurring == YES")
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Expense.date, ascending: false)]
-        
-        do {
-            return try context.fetch(request)
-        } catch {
-            print("Error fetching recurring expenses: \(error)")
-            return []
-        }
+        // Legacy recurring expense functionality has been removed
+        // Use RecurringExpenseService for new recurring expense functionality
+        return []
     }
     
     /// Get recurring expenses that are due for generation
+    /// @deprecated This method is no longer functional. Use RecurringExpenseService instead.
     static func getDueRecurringExpenses(context: NSManagedObjectContext) -> [Expense] {
-        let recurringExpenses = getRecurringExpenses(context: context)
-        let now = Date()
-        
-        return recurringExpenses.filter { expense in
-            guard let nextDate = expense.nextRecurringDate else { return false }
-            return nextDate <= now
-        }
+        // Legacy recurring expense functionality has been removed
+        // Use RecurringExpenseService for new recurring expense functionality
+        return []
     }
 }

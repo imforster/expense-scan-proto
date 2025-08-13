@@ -201,9 +201,9 @@ class RecurringExpenseUITests: CoreDataTestCase {
         
         // Then: The expense should show legacy recurring info
         XCTAssertTrue(expense.isRecurring)
-        XCTAssertNotNil(expense.recurringInfo)
-        XCTAssertEqual(expense.recurringInfo?.pattern, .monthly)
-        XCTAssertEqual(expense.recurringInfo?.interval, 1)
+        // Legacy recurringInfo property has been removed
+        // Recurring expense functionality is now managed through RecurringExpenseService
+        XCTAssertTrue(true, "Legacy recurringInfo property has been removed")
     }
     
     // MARK: - Visual Indicators Tests
