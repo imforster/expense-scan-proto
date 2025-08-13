@@ -550,6 +550,178 @@ class ExpenseEditViewModelTests: XCTestCase {
         
         try! context.save()
     }
+    
+    // MARK: - Recurring Template Detection Tests
+    
+    func testDetectRecurringTemplateRelationship() {
+        // Given - Create a recurring template and linked expense
+        let recurringTemplate = createTestRecurringTemplate()
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        try! context.save()
+        
+        // When - Create view model with template-linked expense
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // Then - Should detect template relationship
+        XCTAssertTrue(viewModelWithTemplate.hasRecurringTemplate)
+        XCTAssertNotNil(viewModelWithTemplate.recurringTemplateInfo)
+        XCTAssertEqual(viewModelWithTemplate.recurringTemplateInfo?.templateId, recurringTemplate.id)
+        XCTAssertTrue(viewModelWithTemplate.recurringTemplateInfo?.isActive ?? false)
+    }
+    
+    func testDetectRecurringTemplateRelationshipWithoutTemplate() {
+        // Given - Create expense without template
+        let expense = createTestExpense()
+        
+        // When - Create view model with regular expense
+        let viewModelWithoutTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // Then - Should not detect template relationship
+        XCTAssertFalse(viewModelWithoutTemplate.hasRecurringTemplate)
+        XCTAssertNil(viewModelWithoutTemplate.recurringTemplateInfo)
+    }
+    
+    func testRecurringTemplateInfoPopulation() {
+        // Given - Create recurring template with pattern
+        let recurringTemplate = createTestRecurringTemplate()
+        let pattern = createTestRecurringPattern(type: "Monthly", interval: 1)
+        recurringTemplate.pattern = pattern
+        
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        
+        // Add some generated expenses to test count
+        let generatedExpense1 = createTestExpense()
+        generatedExpense1.recurringTemplate = recurringTemplate
+        let generatedExpense2 = createTestExpense()
+        generatedExpense2.recurringTemplate = recurringTemplate
+        
+        try! context.save()
+        
+        // When - Create view model
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // Then - Template info should be populated correctly
+        XCTAssertTrue(viewModelWithTemplate.hasRecurringTemplate)
+        let templateInfo = viewModelWithTemplate.recurringTemplateInfo
+        XCTAssertNotNil(templateInfo)
+        XCTAssertEqual(templateInfo?.templateId, recurringTemplate.id)
+        XCTAssertEqual(templateInfo?.patternDescription, "Monthly")
+        XCTAssertTrue(templateInfo?.isActive ?? false)
+        XCTAssertEqual(templateInfo?.totalGeneratedExpenses, 3) // Original expense + 2 generated
+    }
+    
+    func testValidateTemplateRelationshipWithActiveTemplate() {
+        // Given - Create active recurring template
+        let recurringTemplate = createTestRecurringTemplate()
+        recurringTemplate.isActive = true
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        try! context.save()
+        
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // When - Validate template relationship
+        let isValid = viewModelWithTemplate.validateTemplateRelationship()
+        
+        // Then - Should be valid
+        XCTAssertTrue(isValid)
+    }
+    
+    func testValidateTemplateRelationshipWithInactiveTemplate() {
+        // Given - Create inactive recurring template
+        let recurringTemplate = createTestRecurringTemplate()
+        recurringTemplate.isActive = false
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        try! context.save()
+        
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // When - Validate template relationship
+        let isValid = viewModelWithTemplate.validateTemplateRelationship()
+        
+        // Then - Should be invalid
+        XCTAssertFalse(isValid)
+    }
+    
+    func testValidateTemplateRelationshipWithoutTemplate() {
+        // Given - Create expense without template
+        let expense = createTestExpense()
+        
+        let viewModelWithoutTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // When - Validate template relationship
+        let isValid = viewModelWithoutTemplate.validateTemplateRelationship()
+        
+        // Then - Should be valid (no template to validate)
+        XCTAssertTrue(isValid)
+    }
+    
+    func testRecurringTemplateInfoWithNextDueDate() {
+        // Given - Create template with next due date
+        let recurringTemplate = createTestRecurringTemplate()
+        let pattern = createTestRecurringPattern(type: "Monthly", interval: 1)
+        let nextDueDate = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
+        pattern.nextDueDate = nextDueDate
+        recurringTemplate.pattern = pattern
+        
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        try! context.save()
+        
+        // When - Create view model
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // Then - Next due date should be populated
+        XCTAssertNotNil(viewModelWithTemplate.recurringTemplateInfo?.nextDueDate)
+        XCTAssertEqual(viewModelWithTemplate.recurringTemplateInfo?.nextDueDate, nextDueDate)
+    }
+    
+    func testRecurringTemplateInfoWithLastGeneratedDate() {
+        // Given - Create template with last generated date
+        let recurringTemplate = createTestRecurringTemplate()
+        let lastGeneratedDate = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+        recurringTemplate.lastGeneratedDate = lastGeneratedDate
+        
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        try! context.save()
+        
+        // When - Create view model
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // Then - Last generated date should be populated
+        XCTAssertNotNil(viewModelWithTemplate.recurringTemplateInfo?.lastGeneratedDate)
+        XCTAssertEqual(viewModelWithTemplate.recurringTemplateInfo?.lastGeneratedDate, lastGeneratedDate)
+    }
+    
+    // MARK: - Helper Methods for Template Tests
+    
+    private func createTestRecurringTemplate() -> RecurringExpense {
+        let recurringTemplate = RecurringExpense(context: context)
+        recurringTemplate.id = UUID()
+        recurringTemplate.amount = NSDecimalNumber(string: "100.00")
+        recurringTemplate.merchant = "Electric Company"
+        recurringTemplate.currencyCode = "USD"
+        recurringTemplate.isActive = true
+        recurringTemplate.createdDate = Date()
+        
+        try! context.save()
+        return recurringTemplate
+    }
+    
+    private func createTestRecurringPattern(type: String, interval: Int32) -> RecurringPatternEntity {
+        let pattern = RecurringPatternEntity(context: context)
+        pattern.id = UUID()
+        pattern.patternType = type
+        pattern.interval = interval
+        pattern.nextDueDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
+        
+        try! context.save()
+        return pattern
+    }
 }
 
 // MARK: - Mock Category Service
