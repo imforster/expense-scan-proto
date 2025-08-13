@@ -35,10 +35,15 @@ struct ExpenseEditView: View {
                 // Additional Details Section
                 additionalDetailsSection
                 
+                // Recurring Template Section (if linked to template)
+                if viewModel.hasRecurringTemplate {
+                    recurringTemplateSection
+                }
+                
                 // Recurring Expense Section
-                recurringExpenseSection
+//                recurringExpenseSection
             }
-            .navigationTitle(isEditing ? "Edit Expense" : "New Expense")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -95,10 +100,24 @@ struct ExpenseEditView: View {
         }
     }
     
+    // MARK: - Computed Properties
+    
+    private var navigationTitle: String {
+        if isEditing {
+            if viewModel.hasRecurringTemplate {
+                return "Edit Template Expense"
+            } else {
+                return "Edit Expense"
+            }
+        } else {
+            return "New Expense"
+        }
+    }
+    
     // MARK: - Form Sections
     
     private var basicInformationSection: some View {
-        Section("Basic Information") {
+        Section {
             // Amount with Currency
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -162,6 +181,22 @@ struct ExpenseEditView: View {
                         Button(method) {
                             viewModel.paymentMethod = method
                         }
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Basic Information")
+                
+                if viewModel.hasRecurringTemplate {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: "repeat.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        Text("Template Linked")
+                            .font(.caption)
+                            .foregroundColor(.blue)
                     }
                 }
             }
@@ -459,6 +494,120 @@ struct ExpenseEditView: View {
                     }
                 }
             }
+        }
+    }
+    
+    private var recurringTemplateSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header with template indicator
+                HStack {
+                    Image(systemName: "repeat.circle.fill")
+                        .foregroundColor(.blue)
+                        .font(.title2)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recurring Template Expense")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                        
+                        Text("This expense is linked to a recurring template")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Template status indicator
+                    if let templateInfo = viewModel.recurringTemplateInfo {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(templateInfo.isActive ? Color.green : Color.orange)
+                                .frame(width: 8, height: 8)
+                            
+                            Text(templateInfo.isActive ? "Active" : "Inactive")
+                                .font(.caption)
+                                .foregroundColor(templateInfo.isActive ? .green : .orange)
+                        }
+                    }
+                }
+                
+                // Template information
+                if let templateInfo = viewModel.recurringTemplateInfo {
+                    VStack(spacing: 8) {
+                        // Pattern description
+                        HStack {
+                            Text("Pattern:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(templateInfo.patternDescription)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // Next due date
+                        if let nextDueDate = templateInfo.nextDueDate {
+                            HStack {
+                                Text("Next Due:")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text(nextDueDate, style: .date)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // Last generated date
+                        if let lastGenerated = templateInfo.lastGeneratedDate {
+                            HStack {
+                                Text("Last Generated:")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text(lastGenerated, style: .date)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // Total generated expenses
+                        HStack {
+                            Text("Total Generated:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text("\(templateInfo.totalGeneratedExpenses) expenses")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                
+                // Warning or info message
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(.blue)
+                        
+                        Text("Template Relationship")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    
+                    Text("Changes to this expense may affect the recurring template. You'll be asked whether to update the template or only this expense.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 8)
+            }
+            .padding(.vertical, 8)
+        } header: {
+            Label("Recurring Template", systemImage: "repeat")
+                .foregroundColor(.blue)
         }
     }
     
