@@ -172,22 +172,8 @@ struct SimpleRecurringSetupView: View {
             // Calculate next expected date based on recurring pattern
             nextExpectedDate = pattern.nextDueDate
         } else {
-            // Check for legacy notes-based recurring info
-            if expense.isRecurring, let recurringInfo = expense.recurringInfo {
-                // Convert old pattern to new pattern
-                selectedPattern = convertLegacyPattern(recurringInfo.pattern)
-                interval = recurringInfo.interval
-                
-                if let existingDayOfMonth = recurringInfo.dayOfMonth {
-                    dayOfMonth = existingDayOfMonth
-                    showingDayPicker = true
-                } else {
-                    showingDayPicker = false
-                }
-                
-                // Calculate next expected date based on recurring pattern
-                nextExpectedDate = recurringInfo.calculateNextDate(from: expense.date)
-            }
+            // Legacy recurring info is no longer supported
+            // This functionality has been removed as part of the recurring expense editing cleanup
         }
         
         // Load additional recurring properties from expense notes if they exist
@@ -212,20 +198,7 @@ struct SimpleRecurringSetupView: View {
         }
     }
     
-    private func convertLegacyPattern(_ pattern: RecurringPattern) -> RecurringFrequency {
-        switch pattern {
-        case .none:
-            return .none
-        case .weekly:
-            return .weekly
-        case .biweekly:
-            return .biweekly
-        case .monthly:
-            return .monthly
-        case .quarterly:
-            return .quarterly
-        }
-    }
+
     
     private func getPatternDescription() -> String {
         switch selectedPattern {

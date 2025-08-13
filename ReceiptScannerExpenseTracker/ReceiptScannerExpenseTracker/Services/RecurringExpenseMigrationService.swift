@@ -64,45 +64,9 @@ class RecurringExpenseMigrationService {
     
     /// Migrate a single expense from notes-based to Core Data entity
     private func migrateExpense(_ expense: Expense) throws -> MigrationResult.ExpenseResult {
-        // Parse recurring info from notes
-        guard let recurringInfo = expense.recurringInfo else {
-            return .skipped("No valid recurring info found in notes")
-        }
-        
-        // Check if this expense already has a recurring template
-        if expense.recurringTemplate != nil {
-            return .skipped("Expense already has a recurring template")
-        }
-        
-        // Convert RecurringInfo to RecurringFrequency
-        guard let patternType = convertToPatternType(recurringInfo.pattern) else {
-            return .skipped("Unsupported recurring pattern: \(recurringInfo.pattern)")
-        }
-        
-        // Create the new recurring expense
-        let recurringExpense = recurringExpenseService.createRecurringExpense(
-            amount: expense.amount,
-            currencyCode: expense.currencyCode,
-            merchant: expense.merchant,
-            notes: cleanNotesFromRecurringInfo(expense.notes),
-            paymentMethod: expense.paymentMethod,
-            category: expense.category,
-            tags: expense.safeTags,
-            patternType: patternType,
-            interval: Int32(recurringInfo.interval),
-            dayOfMonth: recurringInfo.dayOfMonth.map { Int32($0) },
-            dayOfWeek: nil,
-            startDate: expense.date
-        )
-        
-        // Link the original expense to the new recurring template
-        expense.recurringTemplate = recurringExpense
-        
-        // Clear the isRecurring flag and clean up notes
-        expense.isRecurring = false
-        expense.notes = cleanNotesFromRecurringInfo(expense.notes)
-        
-        return .success(recurringExpense)
+        // Since RecurringInfo and RecurringPattern are no longer available, skip migration
+        return .skipped("RecurringPattern migration not supported in current implementation")
+
     }
     
     // MARK: - Helper Methods
@@ -121,21 +85,7 @@ class RecurringExpenseMigrationService {
         }
     }
     
-    /// Convert old RecurringPattern enum to new RecurringFrequency
-    private func convertToPatternType(_ pattern: RecurringPattern) -> RecurringFrequency? {
-        switch pattern {
-        case .none:
-            return RecurringFrequency.none
-        case .weekly:
-            return RecurringFrequency.weekly
-        case .biweekly:
-            return RecurringFrequency.biweekly
-        case .monthly:
-            return RecurringFrequency.monthly
-        case .quarterly:
-            return RecurringFrequency.quarterly
-        }
-    }
+
     
     /// Remove recurring info from notes string
     private func cleanNotesFromRecurringInfo(_ notes: String?) -> String? {

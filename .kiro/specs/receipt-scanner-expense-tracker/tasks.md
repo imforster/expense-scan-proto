@@ -157,7 +157,7 @@
     - **Quality Gates**: Users can see when editing a template-linked expense, clear visual indicators, no recurring editing in ExpenseEditView
     - _Requirements: 4.7_
 
-  - [ ] 4.10.3.1 Remove recurring expense editing section from ExpenseEditView
+  - [x] 4.10.3.1 Remove recurring expense editing section from ExpenseEditView
     - Remove the recurringExpenseSection from ExpenseEditView completely
     - Remove recurring-related properties from ExpenseEditViewModel (isRecurring, recurringPattern, etc.)
     - Update ExpenseEditView to only show template information, not allow editing recurring settings
