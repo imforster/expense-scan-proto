@@ -178,20 +178,45 @@ class RecurringExpenseService {
     
     /// Delete a recurring expense and optionally its generated expenses
     func deleteRecurringExpense(_ recurringExpense: RecurringExpense, deleteGeneratedExpenses: Bool = false) {
+        // Ensure the object is not deleted and has a valid context
+        guard !recurringExpense.isDeleted, recurringExpense.managedObjectContext != nil else {
+            print("Warning: Attempting to delete an already deleted or invalid RecurringExpense")
+            return
+        }
+        
+        // Handle generated expenses first
         if deleteGeneratedExpenses {
-            let generatedExpenses = recurringExpense.safeGeneratedExpenses
+            // Get a copy of the generated expenses array to avoid mutation during iteration
+            let generatedExpenses = Array(recurringExpense.safeGeneratedExpenses)
             for expense in generatedExpenses {
-                context.delete(expense)
+                if !expense.isDeleted && expense.managedObjectContext != nil {
+                    context.delete(expense)
+                }
             }
         } else {
             // Clear the relationship but keep the expenses
-            let generatedExpenses = recurringExpense.safeGeneratedExpenses
+            let generatedExpenses = Array(recurringExpense.safeGeneratedExpenses)
             for expense in generatedExpenses {
-                expense.recurringTemplate = nil
+                if !expense.isDeleted && expense.managedObjectContext != nil {
+                    expense.recurringTemplate = nil
+                }
             }
         }
         
+        // Delete the pattern entity if it exists
+        if let pattern = recurringExpense.pattern, !pattern.isDeleted, pattern.managedObjectContext != nil {
+            context.delete(pattern)
+        }
+        
+        // Finally delete the recurring expense itself
         context.delete(recurringExpense)
+    }
+    
+    /// Delete multiple recurring expenses with the same deletion policy
+    func deleteRecurringExpenses(_ recurringExpenses: [RecurringExpense], deleteGeneratedExpenses: Bool = false) {
+        for recurringExpense in recurringExpenses {
+            deleteRecurringExpense(recurringExpense, deleteGeneratedExpenses: deleteGeneratedExpenses)
+        }
     }
     
     // MARK: - Duplicate Prevention
