@@ -31,20 +31,13 @@ class ExpenseEditViewModel: ObservableObject {
     @Published var selectedCategory: Category?
     @Published var notes: String = ""
     @Published var paymentMethod: String = ""
-    @Published var isRecurring: Bool = false
-    @Published var recurringPattern: RecurringPattern = .monthly
-    @Published var nextExpectedDate: Date? = nil
-    @Published var shouldRemind: Bool = false
-    @Published var reminderDays: Int = 1
-    @Published var autoCreateNext: Bool = false
-    @Published var similarExpensesCount: Int = 0
     @Published var tags: [Tag] = []
     @Published var expenseItems: [ExpenseItemEdit] = []
     @Published var expenseContexts: Set<ExpenseContext> = []
     @Published var currencyCode: String = ""
     @Published var selectedCurrencyInfo: CurrencyInfo?
     
-    // Recurring template detection
+    // Recurring template detection (read-only)
     @Published var hasRecurringTemplate: Bool = false
     @Published var recurringTemplateInfo: RecurringTemplateInfo?
     
@@ -150,82 +143,7 @@ class ExpenseEditViewModel: ObservableObject {
         selectedCategory = expense.category
         notes = expense.notes ?? ""
         paymentMethod = expense.paymentMethod ?? ""
-        isRecurring = expense.isRecurring
         currencyCode = expense.currencyCode
-        
-        // Extract recurring pattern information from notes if present
-        if isRecurring {
-            // Extract pattern using NSRegularExpression for better control
-            let patternRegex = try? NSRegularExpression(pattern: "\\[Recurring: ([^\\]]+)\\]", options: [])
-            if let regex = patternRegex {
-                let nsString = notes as NSString
-                if let match = regex.firstMatch(in: notes, options: [], range: NSRange(location: 0, length: nsString.length)) {
-                    let patternString = nsString.substring(with: match.range(at: 1))
-                    
-                    // Try exact match first, then case-insensitive match
-                    if let pattern = RecurringPattern.allCases.first(where: { $0.rawValue == patternString }) {
-                        recurringPattern = pattern
-                    } else if let pattern = RecurringPattern.allCases.first(where: { $0.rawValue.lowercased() == patternString.lowercased() }) {
-                        recurringPattern = pattern
-                    }
-                    
-                    // Clean up notes by removing the pattern info
-                    notes = notes.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
-                }
-            }
-            
-            // Extract next date using NSRegularExpression
-            let nextDateRegex = try? NSRegularExpression(pattern: "\\[Next: ([^\\]]+)\\]", options: [])
-            if let regex = nextDateRegex {
-                let nsString = notes as NSString
-                if let match = regex.firstMatch(in: notes, options: [], range: NSRange(location: 0, length: nsString.length)) {
-                    let nextDateString = nsString.substring(with: match.range(at: 1))
-                    
-                    // Try multiple date formats
-                    let dateFormatters = [
-                        DateFormatter().apply { $0.dateStyle = .medium; $0.timeStyle = .none },
-                        DateFormatter().apply { $0.dateFormat = "MMM d, yyyy" },
-                        DateFormatter().apply { $0.dateFormat = "MM/dd/yyyy" },
-                        DateFormatter().apply { $0.dateFormat = "yyyy-MM-dd" }
-                    ]
-                    
-                    for formatter in dateFormatters {
-                        if let parsedDate = formatter.date(from: nextDateString) {
-                            nextExpectedDate = parsedDate
-                            break
-                        }
-                    }
-                    
-                    // Clean up notes by removing the next date info
-                    notes = notes.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
-                }
-            }
-            
-            // Extract reminder settings using NSRegularExpression
-            let reminderRegex = try? NSRegularExpression(pattern: "\\[Remind: (\\d+)\\]", options: [])
-            if let regex = reminderRegex {
-                let nsString = notes as NSString
-                if let match = regex.firstMatch(in: notes, options: [], range: NSRange(location: 0, length: nsString.length)) {
-                    let reminderString = nsString.substring(with: match.range(at: 1))
-                    
-                    if let days = Int(reminderString) {
-                        shouldRemind = true
-                        reminderDays = days
-                    }
-                    
-                    // Clean up notes by removing the reminder info
-                    notes = notes.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
-                }
-            }
-            
-            // Extract auto-create setting
-            if notes.contains("[AutoCreate]") {
-                autoCreateNext = true
-                
-                // Clean up notes by removing the auto-create info
-                notes = notes.replacingOccurrences(of: "\\[AutoCreate\\]", with: "", options: .regularExpression)
-            }
-        }
         
         // Extract expense contexts from notes
         let (extractedContexts, cleanedNotes) = extractExpenseContexts(from: notes)
@@ -292,25 +210,7 @@ class ExpenseEditViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Recurring Expense Detection
-    
-    func detectRecurringExpense() async {
-        guard !merchant.isEmpty else { return }
-        
-        do {
-            let result = try await analyzeRecurringPattern()
-            await MainActor.run {
-                if result.isRecurring && !isRecurring {
-                    // Show suggestion to mark as recurring
-                    isRecurring = true
-                    recurringPattern = result.pattern
-                    nextExpectedDate = result.nextExpectedDate
-                }
-            }
-        } catch {
-            print("Failed to detect recurring expense: \(error)")
-        }
-    }
+
     
     // MARK: - Recurring Template Detection
     
@@ -349,105 +249,7 @@ class ExpenseEditViewModel: ObservableObject {
         return templateInfo.isActive
     }
     
-    private func analyzeRecurringPattern() async throws -> RecurringExpenseAnalysis {
-        return try await withCheckedThrowingContinuation { continuation in
-            context.perform {
-                // Look for similar expenses from the same merchant
-                let fetchRequest: NSFetchRequest<Expense> = Expense.fetchRequest()
-                fetchRequest.predicate = NSPredicate(format: "merchant == %@", self.merchant)
-                fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Expense.date, ascending: false)]
-                fetchRequest.fetchLimit = 10
-                
-                do {
-                    let similarExpenses = try self.context.fetch(fetchRequest)
-                    
-                    // Check if there are at least 3 similar expenses
-                    if similarExpenses.count >= 3 {
-                        // Check for regular intervals (monthly pattern)
-                        let dates = similarExpenses.map { $0.date }.sorted()
-                        let intervals = zip(dates, dates.dropFirst()).map { Calendar.current.dateComponents([.day], from: $0, to: $1).day ?? 0 }
-                        
-                        // Check for different patterns
-                        let weeklyIntervals = intervals.filter { abs($0 - 7) <= 2 }
-                        let biweeklyIntervals = intervals.filter { abs($0 - 14) <= 3 }
-                        let monthlyIntervals = intervals.filter { abs($0 - 30) <= 5 }
-                        let quarterlyIntervals = intervals.filter { abs($0 - 90) <= 10 }
-                        
-                        // Determine the most likely pattern
-                        var pattern: RecurringPattern = .none
-                        var confidence: Float = 0.0
-                        
-                        if weeklyIntervals.count >= intervals.count / 2 {
-                            pattern = .weekly
-                            confidence = Float(weeklyIntervals.count) / Float(intervals.count)
-                        } else if biweeklyIntervals.count >= intervals.count / 2 {
-                            pattern = .biweekly
-                            confidence = Float(biweeklyIntervals.count) / Float(intervals.count)
-                        } else if monthlyIntervals.count >= intervals.count / 2 {
-                            pattern = .monthly
-                            confidence = Float(monthlyIntervals.count) / Float(intervals.count)
-                        } else if quarterlyIntervals.count >= intervals.count / 2 {
-                            pattern = .quarterly
-                            confidence = Float(quarterlyIntervals.count) / Float(intervals.count)
-                        }
-                        
-                        // Check for amount consistency
-                        let amounts = similarExpenses.map { $0.amount.decimalValue }
-                        let averageAmount = amounts.reduce(Decimal.zero, +) / Decimal(amounts.count)
-                        let amountVariance = amounts.map { abs($0 - averageAmount) / averageAmount }
-                        let isAmountConsistent = amountVariance.filter { $0 < 0.1 }.count >= amounts.count / 2
-                        
-                        // Calculate next expected date
-                        var nextDate: Date? = nil
-                        if pattern != .none {
-                            let lastDate = dates.last ?? Date()
-                            switch pattern {
-                            case .weekly:
-                                nextDate = Calendar.current.date(byAdding: .day, value: 7, to: lastDate)
-                            case .biweekly:
-                                nextDate = Calendar.current.date(byAdding: .day, value: 14, to: lastDate)
-                            case .monthly:
-                                nextDate = Calendar.current.date(byAdding: .month, value: 1, to: lastDate)
-                            case .quarterly:
-                                nextDate = Calendar.current.date(byAdding: .month, value: 3, to: lastDate)
-                            case .none:
-                                nextDate = nil
-                            }
-                        }
-                        
-                        let analysis = RecurringExpenseAnalysis(
-                            isRecurring: pattern != .none,
-                            pattern: pattern,
-                            confidence: confidence,
-                            isAmountConsistent: isAmountConsistent,
-                            averageAmount: averageAmount,
-                            nextExpectedDate: nextDate,
-                            similarExpensesCount: similarExpenses.count
-                        )
-                        
-                        // Store the similar expenses count for UI display
-                        DispatchQueue.main.async {
-                            self.similarExpensesCount = similarExpenses.count
-                        }
-                        
-                        continuation.resume(returning: analysis)
-                    } else {
-                        continuation.resume(returning: RecurringExpenseAnalysis(
-                            isRecurring: false,
-                            pattern: .none,
-                            confidence: 0.0,
-                            isAmountConsistent: false,
-                            averageAmount: Decimal.zero,
-                            nextExpectedDate: nil,
-                            similarExpensesCount: similarExpenses.count
-                        ))
-                    }
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
+
     
     // MARK: - Receipt Splitting
     
@@ -789,57 +591,12 @@ class ExpenseEditViewModel: ObservableObject {
         }
         
         expense.paymentMethod = paymentMethod.isEmpty ? nil : paymentMethod
-        expense.isRecurring = isRecurring
         
         // Start with the user's notes
         var notesText = notes
         
         // Add expense contexts to notes
         notesText = addExpenseContextsToNotes(notesText)
-        
-        // Store recurring pattern information in notes if recurring
-        if isRecurring {
-            // Remove any existing recurring info first to avoid duplicates
-            notesText = notesText.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
-            notesText = notesText.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
-            notesText = notesText.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
-            notesText = notesText.replacingOccurrences(of: "\\[AutoCreate\\]", with: "", options: .regularExpression)
-            
-            // Clean up extra whitespace
-            notesText = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            // Add recurring pattern info
-            let patternInfo = "[Recurring: \(recurringPattern.rawValue)]"
-            if notesText.isEmpty {
-                notesText = patternInfo
-            } else {
-                notesText += "\n\n" + patternInfo
-            }
-            
-            // Add next expected date if available, or calculate it if not set
-            let nextDate = nextExpectedDate ?? calculateNextExpectedDate()
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .none
-            notesText += " [Next: \(dateFormatter.string(from: nextDate))]"
-            
-            // Add reminder settings if enabled
-            if shouldRemind {
-                notesText += " [Remind: \(reminderDays)]"
-            }
-            
-            // Add auto-create flag if enabled
-            if autoCreateNext {
-                notesText += " [AutoCreate]"
-            }
-        } else {
-            // If not recurring, remove any existing recurring info
-            notesText = notesText.replacingOccurrences(of: "\\[Recurring: [^\\]]+\\]", with: "", options: .regularExpression)
-            notesText = notesText.replacingOccurrences(of: "\\[Next: [^\\]]+\\]", with: "", options: .regularExpression)
-            notesText = notesText.replacingOccurrences(of: "\\[Remind: \\d+\\]", with: "", options: .regularExpression)
-            notesText = notesText.replacingOccurrences(of: "\\[AutoCreate\\]", with: "", options: .regularExpression)
-            notesText = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
         
         // Save the final notes
         expense.notes = notesText.isEmpty ? nil : notesText
@@ -1013,22 +770,7 @@ class ExpenseEditViewModel: ObservableObject {
         }
     }
     
-    private func calculateNextExpectedDate() -> Date {
-        let calendar = Calendar.current
-        
-        switch recurringPattern {
-        case .none:
-            return date
-        case .weekly:
-            return calendar.date(byAdding: .weekOfYear, value: 1, to: date) ?? date
-        case .biweekly:
-            return calendar.date(byAdding: .weekOfYear, value: 2, to: date) ?? date
-        case .monthly:
-            return calendar.date(byAdding: .month, value: 1, to: date) ?? date
-        case .quarterly:
-            return calendar.date(byAdding: .month, value: 3, to: date) ?? date
-        }
-    }
+
     
     var totalReceiptSplitsAmount: Decimal {
         receiptSplits.reduce(Decimal.zero) { total, split in
@@ -1040,25 +782,7 @@ class ExpenseEditViewModel: ObservableObject {
 // MARK: - Supporting Models
 // Now using external model definitions from Models/ExpenseItemEdit.swift and Models/ReceiptSplit.swift
 
-// MARK: - Recurring Expense Models
 
-enum RecurringPattern: String, CaseIterable {
-    case none = "None"
-    case weekly = "Weekly"
-    case biweekly = "Bi-weekly"
-    case monthly = "Monthly"
-    case quarterly = "Quarterly"
-}
-
-struct RecurringExpenseAnalysis {
-    let isRecurring: Bool
-    let pattern: RecurringPattern
-    let confidence: Float
-    let isAmountConsistent: Bool
-    let averageAmount: Decimal
-    let nextExpectedDate: Date?
-    let similarExpensesCount: Int
-}
 
 // MARK: - Errors
 

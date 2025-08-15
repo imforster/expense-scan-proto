@@ -266,17 +266,6 @@ struct ExpenseDetailView: View {
                 Text("Next: \(pattern.nextDueDate, style: .date)")
                     .font(.caption2)
                     .foregroundColor(.blue.opacity(0.8))
-            } else if let recurringInfo = expense.recurringInfo {
-                // Legacy notes-based recurring info
-                Text(recurringInfo.description)
-                    .font(.caption2)
-                    .foregroundColor(.orange)
-                
-                if let nextDate = expense.nextRecurringDate {
-                    Text("Next: \(nextDate, style: .date)")
-                        .font(.caption2)
-                        .foregroundColor(.orange.opacity(0.8))
-                }
             } else if let pattern = expense.recurringPattern {
                 // Fallback to old pattern format
                 Text(pattern)
