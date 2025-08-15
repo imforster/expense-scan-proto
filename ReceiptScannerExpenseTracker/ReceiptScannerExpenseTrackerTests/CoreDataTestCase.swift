@@ -54,7 +54,7 @@ class CoreDataTestCase: XCTestCase {
     
     /// Cleans up all entities in the test database
     private func cleanupAllEntities() async throws {
-        let entityNames = ["Category", "Expense", "ExpenseItem", "Receipt", "ReceiptItem", "Tag"]
+        let entityNames = ["Category", "Expense", "ExpenseItem", "Receipt", "ReceiptItem", "Tag", "RecurringExpense", "RecurringPatternEntity"]
         
         for entityName in entityNames {
             let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
