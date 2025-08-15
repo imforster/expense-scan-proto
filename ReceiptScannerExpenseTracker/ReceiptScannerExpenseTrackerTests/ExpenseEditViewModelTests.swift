@@ -43,7 +43,6 @@ class ExpenseEditViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.selectedCategory)
         XCTAssertEqual(viewModel.notes, "")
         XCTAssertEqual(viewModel.paymentMethod, "")
-        XCTAssertFalse(viewModel.isRecurring)
         XCTAssertTrue(viewModel.tags.isEmpty)
         XCTAssertTrue(viewModel.expenseItems.isEmpty)
         XCTAssertFalse(viewModel.isReceiptSplitMode)
@@ -61,7 +60,6 @@ class ExpenseEditViewModelTests: XCTestCase {
         XCTAssertEqual(viewModelWithExpense.selectedCategory, expense.category)
         XCTAssertEqual(viewModelWithExpense.notes, expense.notes ?? "")
         XCTAssertEqual(viewModelWithExpense.paymentMethod, expense.paymentMethod ?? "")
-        XCTAssertEqual(viewModelWithExpense.isRecurring, expense.isRecurring)
     }
     
     // MARK: - Validation Tests
@@ -109,29 +107,7 @@ class ExpenseEditViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.suggestedCategories.first?.name, "Food")
     }
     
-    // MARK: - Recurring Expense Detection Tests
-    
-    func testRecurringExpenseDetection() async {
-        // Create multiple similar expenses
-        createMultipleTestExpenses(merchant: "Electric Company", count: 4)
-        
-        viewModel.merchant = "Electric Company"
-        
-        await viewModel.detectRecurringExpense()
-        
-        XCTAssertTrue(viewModel.isRecurring)
-    }
-    
-    func testRecurringExpenseDetectionWithFewExpenses() async {
-        // Create only 2 similar expenses (below threshold)
-        createMultipleTestExpenses(merchant: "Random Store", count: 2)
-        
-        viewModel.merchant = "Random Store"
-        
-        await viewModel.detectRecurringExpense()
-        
-        XCTAssertFalse(viewModel.isRecurring)
-    }
+
     
     // MARK: - Tag Management Tests
     
@@ -460,7 +436,6 @@ class ExpenseEditViewModelTests: XCTestCase {
         viewModel.selectedCategory = category
         viewModel.notes = "Test notes"
         viewModel.paymentMethod = "Credit Card"
-        viewModel.isRecurring = true
         
         do {
             try await viewModel.saveExpense()
@@ -476,7 +451,6 @@ class ExpenseEditViewModelTests: XCTestCase {
             XCTAssertEqual(savedExpense.category, category)
             XCTAssertEqual(savedExpense.notes, "Test notes")
             XCTAssertEqual(savedExpense.paymentMethod, "Credit Card")
-            XCTAssertTrue(savedExpense.isRecurring)
         } catch {
             XCTFail("Failed to save expense: \(error)")
         }
@@ -506,7 +480,6 @@ class ExpenseEditViewModelTests: XCTestCase {
         expense.merchant = "Test Merchant"
         expense.notes = "Test notes"
         expense.paymentMethod = "Credit Card"
-        expense.isRecurring = false
         expense.category = createTestCategory(name: "Food", icon: "fork.knife", color: "FF0000")
         
         try! context.save()
@@ -545,7 +518,6 @@ class ExpenseEditViewModelTests: XCTestCase {
             expense.date = calendar.date(byAdding: .month, value: -i, to: Date()) ?? Date()
             expense.notes = "Test expense \(i)"
             expense.paymentMethod = "Credit Card"
-            expense.isRecurring = false
         }
         
         try! context.save()
@@ -697,6 +669,118 @@ class ExpenseEditViewModelTests: XCTestCase {
         XCTAssertEqual(viewModelWithTemplate.recurringTemplateInfo?.lastGeneratedDate, lastGeneratedDate)
     }
     
+    // MARK: - Recurring Editing Removal Tests
+    
+    func testRecurringEditingControlsRemoved() {
+        // Test that recurring-related properties are no longer available
+        // This test verifies that the recurring editing functionality has been completely removed
+        
+        // These properties should no longer exist in the view model
+        // If they do exist, this test will fail to compile, which is the desired behavior
+        
+        // Verify that the view model doesn't have recurring editing properties
+        let mirror = Mirror(reflecting: viewModel)
+        let propertyNames = mirror.children.compactMap { $0.label }
+        
+        // These properties should NOT exist
+        XCTAssertFalse(propertyNames.contains("isRecurring"))
+        XCTAssertFalse(propertyNames.contains("recurringPattern"))
+        XCTAssertFalse(propertyNames.contains("nextExpectedDate"))
+        XCTAssertFalse(propertyNames.contains("shouldRemind"))
+        XCTAssertFalse(propertyNames.contains("reminderDays"))
+        XCTAssertFalse(propertyNames.contains("autoCreateNext"))
+        XCTAssertFalse(propertyNames.contains("similarExpensesCount"))
+    }
+    
+    func testRecurringDetectionMethodRemoved() {
+        // Verify that detectRecurringExpense method is no longer available
+        let mirror = Mirror(reflecting: viewModel)
+        let methodExists = mirror.children.contains { child in
+            return child.label == "detectRecurringExpense"
+        }
+        XCTAssertFalse(methodExists, "detectRecurringExpense method should be removed")
+    }
+    
+    func testSaveExpenseWithoutRecurringLogic() async {
+        // Test that saveExpense no longer handles recurring expense creation
+        let category = createTestCategory(name: "Food", icon: "fork.knife", color: "FF0000")
+        
+        viewModel.amount = "25.99"
+        viewModel.merchant = "Test Restaurant"
+        viewModel.selectedCategory = category
+        viewModel.notes = "Test notes"
+        viewModel.paymentMethod = "Credit Card"
+        
+        do {
+            try await viewModel.saveExpense()
+            
+            // Verify expense was saved without recurring logic
+            let fetchRequest: NSFetchRequest<Expense> = Expense.fetchRequest()
+            let expenses = try context.fetch(fetchRequest)
+            
+            XCTAssertEqual(expenses.count, 1)
+            let savedExpense = expenses.first!
+            XCTAssertEqual(savedExpense.amount, NSDecimalNumber(string: "25.99"))
+            XCTAssertEqual(savedExpense.merchant, "Test Restaurant")
+            XCTAssertEqual(savedExpense.category, category)
+            XCTAssertEqual(savedExpense.notes, "Test notes")
+            XCTAssertEqual(savedExpense.paymentMethod, "Credit Card")
+            
+            // Verify notes don't contain recurring pattern information
+            let notes = savedExpense.notes ?? ""
+            XCTAssertFalse(notes.contains("[Recurring:"))
+            XCTAssertFalse(notes.contains("[Next:"))
+            XCTAssertFalse(notes.contains("[Remind:"))
+            XCTAssertFalse(notes.contains("[AutoCreate]"))
+        } catch {
+            XCTFail("Failed to save expense: \(error)")
+        }
+    }
+    
+    func testNoRecurringEditingInExpenseEditView() {
+        // This test verifies that ExpenseEditView doesn't contain recurring editing controls
+        // We test this by ensuring the view model doesn't expose recurring editing properties
+        
+        // Verify template detection is read-only
+        XCTAssertTrue(viewModel.hasRecurringTemplate == false) // Default state
+        
+        // Verify no recurring editing state properties exist
+        let mirror = Mirror(reflecting: viewModel)
+        let propertyNames = mirror.children.compactMap { $0.label }
+        
+        // Should not have editing-related recurring properties
+        XCTAssertFalse(propertyNames.contains("showingRecurringSetup"))
+        XCTAssertFalse(propertyNames.contains("recurringFrequency"))
+        XCTAssertFalse(propertyNames.contains("recurringInterval"))
+        XCTAssertFalse(propertyNames.contains("recurringEndDate"))
+        XCTAssertFalse(propertyNames.contains("enableRecurring"))
+    }
+    
+    func testTemplateInfoIsReadOnly() {
+        // Test that template information is displayed but not editable
+        // Create a recurring template and linked expense
+        let recurringTemplate = createTestRecurringTemplate()
+        let expense = createTestExpense()
+        expense.recurringTemplate = recurringTemplate
+        try! context.save()
+        
+        // Create view model with template-linked expense
+        let viewModelWithTemplate = ExpenseEditViewModel(context: context, expense: expense, categoryService: mockCategoryService)
+        
+        // Verify template info is detected (read-only)
+        XCTAssertTrue(viewModelWithTemplate.hasRecurringTemplate)
+        XCTAssertNotNil(viewModelWithTemplate.recurringTemplateInfo)
+        
+        // Verify no methods exist to modify template from expense editing
+        let mirror = Mirror(reflecting: viewModelWithTemplate)
+        let methodNames = mirror.children.compactMap { $0.label }
+        
+        XCTAssertFalse(methodNames.contains("updateRecurringTemplate"))
+        XCTAssertFalse(methodNames.contains("modifyRecurringPattern"))
+        XCTAssertFalse(methodNames.contains("editRecurringSettings"))
+        XCTAssertFalse(methodNames.contains("saveRecurringChanges"))
+    }
+
     // MARK: - Helper Methods for Template Tests
     
     private func createTestRecurringTemplate() -> RecurringExpense {

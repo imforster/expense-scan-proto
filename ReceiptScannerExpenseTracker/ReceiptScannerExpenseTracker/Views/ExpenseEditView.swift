@@ -40,8 +40,8 @@ struct ExpenseEditView: View {
                     recurringTemplateSection
                 }
                 
-                // Recurring Expense Section
-//                recurringExpenseSection
+                // Manage Recurring Templates Section
+                manageRecurringTemplatesSection
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -94,9 +94,6 @@ struct ExpenseEditView: View {
             .sheet(isPresented: $viewModel.showingCurrencyPicker) {
                 CurrencySelectionView(selectedCurrencyCode: $viewModel.currencyCode)
             }
-        }
-        .task {
-            await viewModel.detectRecurringExpense()
         }
     }
     
@@ -611,69 +608,29 @@ struct ExpenseEditView: View {
         }
     }
     
-    private var recurringExpenseSection: some View {
-        Section(isEditing && viewModel.expense?.isRecurring == true ? "Modify Recurring Expense" : "Recurring Expense") {
-            Toggle(isEditing && viewModel.expense?.isRecurring == true ? "Update Recurring Settings" : "Mark as Recurring", isOn: $viewModel.isRecurring)
-            
-            if viewModel.isRecurring {
-                Picker("Frequency", selection: $viewModel.recurringPattern) {
-                    ForEach(RecurringPattern.allCases.filter { $0 != .none }, id: \.self) { pattern in
-                        Text(pattern.rawValue).tag(pattern)
-                    }
-                }
-                
-                if let nextDate = viewModel.nextExpectedDate {
-                    HStack {
-                        Text("Next Expected")
-                        Spacer()
-                        Text(nextDate, style: .date)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // Add date picker for next occurrence
-                if viewModel.nextExpectedDate == nil {
-                    DatePicker("Next Occurrence", selection: Binding(
-                        get: { viewModel.nextExpectedDate ?? Calendar.current.date(byAdding: .month, value: 1, to: Date())! },
-                        set: { viewModel.nextExpectedDate = $0 }
-                    ), displayedComponents: [.date])
-                }
-                
-                // Add reminder option
-                Toggle("Set Reminder", isOn: $viewModel.shouldRemind)
-                
-                if viewModel.shouldRemind {
-                    Picker("Remind Me", selection: $viewModel.reminderDays) {
-                        Text("Same day").tag(0)
-                        Text("1 day before").tag(1)
-                        Text("3 days before").tag(3)
-                        Text("1 week before").tag(7)
-                    }
-                }
-                
-                // Add auto-create option
-                Toggle("Auto-create Next Expense", isOn: $viewModel.autoCreateNext)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(isEditing && viewModel.expense?.isRecurring == true ? "Update Recurring Settings" : "Recurring Expense Details")
-                        .font(.headline)
-                        .padding(.top, 4)
+    private var manageRecurringTemplatesSection: some View {
+        Section {
+            NavigationLink(destination: SimpleRecurringListView()) {
+                HStack {
+                    Image(systemName: "repeat.circle")
+                        .foregroundColor(.blue)
+                        .font(.title2)
                     
-                    Text(isEditing && viewModel.expense?.isRecurring == true ? 
-                         "Update the recurring settings for this expense. Changes will affect future occurrences." :
-                         "This expense will be marked as recurring, which helps with budgeting and expense tracking. You can set reminders for upcoming expenses and automatically create the next occurrence.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    if viewModel.similarExpensesCount > 0 {
-                        Text("Based on your history, we found \(viewModel.similarExpensesCount) similar expenses from this merchant.")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Manage Recurring Templates")
+                            .font(.headline)
+                        
+                        Text("Create and manage recurring expense templates")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .padding(.top, 4)
                     }
+                    
+                    Spacer()
                 }
                 .padding(.vertical, 4)
             }
+        } header: {
+            Text("Recurring Expenses")
         }
     }
     
