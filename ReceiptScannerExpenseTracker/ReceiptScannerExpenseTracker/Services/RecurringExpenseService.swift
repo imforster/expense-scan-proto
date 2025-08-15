@@ -1,6 +1,51 @@
 import Foundation
 import CoreData
 
+/// Enum representing different types of template changes
+enum TemplateChangeType {
+    case amount(from: NSDecimalNumber, to: NSDecimalNumber)
+    case merchant(from: String, to: String)
+    case category(from: Category?, to: Category?)
+    case notes(from: String?, to: String?)
+    case paymentMethod(from: String?, to: String?)
+    case currency(from: String, to: String)
+    case tags(from: [Tag], to: [Tag])
+    
+    /// Get a string key for grouping changes by type
+    var changeTypeKey: String {
+        switch self {
+        case .amount: return "amount"
+        case .merchant: return "merchant"
+        case .category: return "category"
+        case .notes: return "notes"
+        case .paymentMethod: return "paymentMethod"
+        case .currency: return "currency"
+        case .tags: return "tags"
+        }
+    }
+}
+
+/// Errors that can occur during recurring expense operations
+enum RecurringExpenseError: Error, LocalizedError {
+    case templateNotFound
+    case invalidTemplate
+    case synchronizationFailed(String)
+    case conflictResolutionFailed(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .templateNotFound:
+            return "Recurring expense template not found"
+        case .invalidTemplate:
+            return "Invalid recurring expense template"
+        case .synchronizationFailed(let message):
+            return "Template synchronization failed: \(message)"
+        case .conflictResolutionFailed(let message):
+            return "Conflict resolution failed: \(message)"
+        }
+    }
+}
+
 /// Service for managing recurring expenses with proper Core Data entities
 class RecurringExpenseService {
     private let context: NSManagedObjectContext
@@ -265,6 +310,310 @@ class RecurringExpenseService {
             print("Error finding potential duplicates: \(error)")
             return []
         }
+    }
+    
+    // MARK: - Template Synchronization Methods
+    
+    /// Detect if an expense is linked to a recurring template and has been modified
+    func detectTemplateLinkedExpenseModification(_ expense: Expense) -> Bool {
+        guard let template = expense.recurringTemplate else { return false }
+        
+        // Check if key fields have been modified from the template
+        return expense.amount != template.amount ||
+               expense.merchant != template.merchant ||
+               expense.category != template.category ||
+               expense.notes != template.notes ||
+               expense.paymentMethod != template.paymentMethod ||
+               expense.currencyCode != template.currencyCode
+    }
+    
+    /// Get the differences between an expense and its recurring template
+    func getExpenseTemplateChanges(_ expense: Expense) -> [TemplateChangeType] {
+        guard let template = expense.recurringTemplate else { return [] }
+        
+        var changes: [TemplateChangeType] = []
+        
+        if expense.amount != template.amount {
+            changes.append(.amount(from: template.amount, to: expense.amount))
+        }
+        
+        if expense.merchant != template.merchant {
+            changes.append(.merchant(from: template.merchant, to: expense.merchant))
+        }
+        
+        if expense.category != template.category {
+            changes.append(.category(from: template.category, to: expense.category))
+        }
+        
+        if expense.notes != template.notes {
+            changes.append(.notes(from: template.notes, to: expense.notes))
+        }
+        
+        if expense.paymentMethod != template.paymentMethod {
+            changes.append(.paymentMethod(from: template.paymentMethod, to: expense.paymentMethod))
+        }
+        
+        if expense.currencyCode != template.currencyCode {
+            changes.append(.currency(from: template.currencyCode, to: expense.currencyCode))
+        }
+        
+        // Check tags
+        let expenseTags = Set(expense.tags?.allObjects as? [Tag] ?? [])
+        let templateTags = Set(template.tags?.allObjects as? [Tag] ?? [])
+        
+        if expenseTags != templateTags {
+            changes.append(.tags(from: Array(templateTags), to: Array(expenseTags)))
+        }
+        
+        return changes
+    }
+    
+    /// Update a recurring template from expense changes
+    func updateTemplateFromExpense(_ template: RecurringExpense, with changes: [TemplateChangeType]) throws {
+        guard !template.isDeleted, template.managedObjectContext != nil else {
+            throw RecurringExpenseError.templateNotFound
+        }
+        
+        for change in changes {
+            switch change {
+            case .amount(_, let newAmount):
+                template.amount = newAmount
+                
+            case .merchant(_, let newMerchant):
+                template.merchant = newMerchant
+                
+            case .category(_, let newCategory):
+                template.category = newCategory
+                
+            case .notes(_, let newNotes):
+                template.notes = newNotes
+                
+            case .paymentMethod(_, let newPaymentMethod):
+                template.paymentMethod = newPaymentMethod
+                
+            case .currency(_, let newCurrency):
+                template.currencyCode = newCurrency
+                
+            case .tags(_, let newTags):
+                // Clear existing tags
+                if let existingTags = template.tags {
+                    template.removeFromTags(existingTags)
+                }
+                // Add new tags
+                for tag in newTags {
+                    template.addToTags(tag)
+                }
+            }
+        }
+    }
+    
+    /// Synchronize template from a specific expense
+    func synchronizeTemplateFromExpense(_ expense: Expense) throws {
+        guard let template = expense.recurringTemplate else {
+            throw RecurringExpenseError.templateNotFound
+        }
+        
+        let changes = getExpenseTemplateChanges(expense)
+        guard !changes.isEmpty else { return }
+        
+        try updateTemplateFromExpense(template, with: changes)
+    }
+    
+    /// Validate that a recurring template is not orphaned
+    func validateTemplateNotOrphaned(_ template: RecurringExpense) -> Bool {
+        // A template is considered orphaned if:
+        // 1. It has no generated expenses AND
+        // 2. It's been inactive for a long time OR
+        // 3. Its next due date is far in the past without recent generation
+        
+        let generatedExpenses = template.safeGeneratedExpenses
+        
+        // If it has generated expenses, it's not orphaned
+        if !generatedExpenses.isEmpty {
+            return true
+        }
+        
+        // Check if it's been inactive for more than 6 months
+        let sixMonthsAgo = Calendar.current.date(byAdding: .month, value: -6, to: Date()) ?? Date()
+        if template.createdDate < sixMonthsAgo && !template.isActive {
+            return false
+        }
+        
+        // Check if next due date is more than 3 months in the past
+        if let pattern = template.pattern {
+            let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+            if pattern.nextDueDate < threeMonthsAgo && template.lastGeneratedDate == nil {
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    /// Find and clean up orphaned templates
+    func findOrphanedTemplates() -> [RecurringExpense] {
+        let allTemplates = getActiveRecurringExpenses()
+        return allTemplates.filter { !validateTemplateNotOrphaned($0) }
+    }
+    
+    /// Resolve conflicts when multiple expenses from the same template have different changes
+    func resolveTemplateUpdateConflicts(_ template: RecurringExpense, conflictingChanges: [[TemplateChangeType]]) throws -> [TemplateChangeType] {
+        guard !conflictingChanges.isEmpty else { return [] }
+        
+        var resolvedChanges: [TemplateChangeType] = []
+        var changesByType: [String: [TemplateChangeType]] = [:]
+        
+        // Group changes by type
+        for changeSet in conflictingChanges {
+            for change in changeSet {
+                let key = change.changeTypeKey
+                if changesByType[key] == nil {
+                    changesByType[key] = []
+                }
+                changesByType[key]?.append(change)
+            }
+        }
+        
+        // Resolve conflicts for each change type
+        for (changeType, changes) in changesByType {
+            guard !changes.isEmpty else { continue }
+            
+            if changes.count == 1 {
+                // No conflict, use the single change
+                resolvedChanges.append(changes[0])
+            } else {
+                // Resolve conflict based on change type
+                switch changeType {
+                case "amount":
+                    // Use the most recent or most common amount
+                    resolvedChanges.append(resolveAmountConflict(changes))
+                    
+                case "merchant":
+                    // Use the most common merchant name
+                    resolvedChanges.append(resolveMerchantConflict(changes))
+                    
+                case "category":
+                    // Use the most common category
+                    resolvedChanges.append(resolveCategoryConflict(changes))
+                    
+                case "notes":
+                    // Merge notes or use the longest one
+                    resolvedChanges.append(resolveNotesConflict(changes))
+                    
+                case "paymentMethod":
+                    // Use the most common payment method
+                    resolvedChanges.append(resolvePaymentMethodConflict(changes))
+                    
+                case "currency":
+                    // Use the most common currency
+                    resolvedChanges.append(resolveCurrencyConflict(changes))
+                    
+                case "tags":
+                    // Merge all unique tags
+                    resolvedChanges.append(resolveTagsConflict(changes))
+                    
+                default:
+                    // Default to first change if we don't have specific resolution logic
+                    resolvedChanges.append(changes[0])
+                }
+            }
+        }
+        
+        return resolvedChanges
+    }
+    
+    // MARK: - Conflict Resolution Helpers
+    
+    private func resolveAmountConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        // Use the most common amount, or the latest one if all are different
+        var amountCounts: [NSDecimalNumber: Int] = [:]
+        
+        for change in changes {
+            if case .amount(_, let newAmount) = change {
+                amountCounts[newAmount] = (amountCounts[newAmount] ?? 0) + 1
+            }
+        }
+        
+        let mostCommonAmount = amountCounts.max(by: { $0.value < $1.value })?.key
+        return .amount(from: NSDecimalNumber.zero, to: mostCommonAmount ?? NSDecimalNumber.zero)
+    }
+    
+    private func resolveMerchantConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        var merchantCounts: [String: Int] = [:]
+        
+        for change in changes {
+            if case .merchant(_, let newMerchant) = change {
+                merchantCounts[newMerchant] = (merchantCounts[newMerchant] ?? 0) + 1
+            }
+        }
+        
+        let mostCommonMerchant = merchantCounts.max(by: { $0.value < $1.value })?.key
+        return .merchant(from: "", to: mostCommonMerchant ?? "")
+    }
+    
+    private func resolveCategoryConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        var categoryCounts: [Category?: Int] = [:]
+        
+        for change in changes {
+            if case .category(_, let newCategory) = change {
+                categoryCounts[newCategory] = (categoryCounts[newCategory] ?? 0) + 1
+            }
+        }
+        
+        let mostCommonCategory = categoryCounts.max(by: { $0.value < $1.value })?.key
+        return .category(from: nil, to: mostCommonCategory ?? nil)
+    }
+    
+    private func resolveNotesConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        var allNotes: [String] = []
+        
+        for change in changes {
+            if case .notes(_, let newNotes) = change, let notes = newNotes, !notes.isEmpty {
+                allNotes.append(notes)
+            }
+        }
+        
+        // Use the longest notes or merge unique ones
+        let longestNotes = allNotes.max(by: { $0.count < $1.count })
+        return .notes(from: nil, to: longestNotes)
+    }
+    
+    private func resolvePaymentMethodConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        var methodCounts: [String?: Int] = [:]
+        
+        for change in changes {
+            if case .paymentMethod(_, let newMethod) = change {
+                methodCounts[newMethod] = (methodCounts[newMethod] ?? 0) + 1
+            }
+        }
+        
+        let mostCommonMethod = methodCounts.max(by: { $0.value < $1.value })?.key
+        return .paymentMethod(from: nil, to: mostCommonMethod ?? nil)
+    }
+    
+    private func resolveCurrencyConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        var currencyCounts: [String: Int] = [:]
+        
+        for change in changes {
+            if case .currency(_, let newCurrency) = change {
+                currencyCounts[newCurrency] = (currencyCounts[newCurrency] ?? 0) + 1
+            }
+        }
+        
+        let mostCommonCurrency = currencyCounts.max(by: { $0.value < $1.value })?.key
+        return .currency(from: "", to: mostCommonCurrency ?? "USD")
+    }
+    
+    private func resolveTagsConflict(_ changes: [TemplateChangeType]) -> TemplateChangeType {
+        var allTags: Set<Tag> = []
+        
+        for change in changes {
+            if case .tags(_, let newTags) = change {
+                allTags.formUnion(newTags)
+            }
+        }
+        
+        return .tags(from: [], to: Array(allTags))
     }
     
     // MARK: - Helper Methods

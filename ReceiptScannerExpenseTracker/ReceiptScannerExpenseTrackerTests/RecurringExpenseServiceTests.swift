@@ -329,4 +329,343 @@ final class RecurringExpenseServiceTests: CoreDataTestCase {
         let remainingExpenses = try testContext.fetch(remainingExpenseRequest)
         XCTAssertEqual(remainingExpenses.count, 0)
     }
+    
+    // MARK: - Template Synchronization Tests
+    
+    func testDetectTemplateLinkedExpenseModification() throws {
+        // Create recurring expense template with a due date in the past
+        let pastDate = Date().addingTimeInterval(-30 * 24 * 60 * 60) // 30 days ago
+        let recurringExpense = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "100.00"),
+            currencyCode: "USD",
+            merchant: "Original Merchant",
+            notes: "Original notes",
+            paymentMethod: "Credit Card",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: pastDate
+        )
+        
+        // Manually set the next due date to be in the past to make it due for generation
+        recurringExpense.pattern?.nextDueDate = pastDate
+        
+        try testContext.save()
+        
+        // Generate expense from template
+        let generatedExpense = recurringExpenseService.generateExpense(from: recurringExpense)
+        XCTAssertNotNil(generatedExpense, "Should be able to generate expense from due template")
+        
+        try testContext.save()
+        
+        // Initially, no modifications should be detected
+        XCTAssertFalse(recurringExpenseService.detectTemplateLinkedExpenseModification(generatedExpense!))
+        
+        // Modify the expense
+        generatedExpense!.amount = NSDecimalNumber(string: "150.00")
+        generatedExpense!.merchant = "Modified Merchant"
+        
+        // Now modifications should be detected
+        XCTAssertTrue(recurringExpenseService.detectTemplateLinkedExpenseModification(generatedExpense!))
+    }
+    
+    func testGetExpenseTemplateChanges() throws {
+        // Create recurring expense template with a due date in the past
+        let pastDate = Date().addingTimeInterval(-7 * 24 * 60 * 60) // 7 days ago
+        let recurringExpense = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "75.00"),
+            currencyCode: "USD",
+            merchant: "Test Merchant",
+            notes: "Test notes",
+            paymentMethod: "Debit Card",
+            category: testCategory,
+            patternType: .weekly,
+            startDate: pastDate
+        )
+        
+        // Manually set the next due date to be in the past to make it due for generation
+        recurringExpense.pattern?.nextDueDate = pastDate
+        
+        try testContext.save()
+        
+        // Generate expense from template
+        let generatedExpense = recurringExpenseService.generateExpense(from: recurringExpense)
+        XCTAssertNotNil(generatedExpense, "Should be able to generate expense from due template")
+        
+        try testContext.save()
+        
+        // Initially, no changes should be detected
+        var changes = recurringExpenseService.getExpenseTemplateChanges(generatedExpense!)
+        XCTAssertTrue(changes.isEmpty)
+        
+        // Modify multiple fields
+        generatedExpense!.amount = NSDecimalNumber(string: "125.00")
+        generatedExpense!.merchant = "Updated Merchant"
+        generatedExpense!.notes = "Updated notes"
+        generatedExpense!.currencyCode = "EUR"
+        
+        // Get changes
+        changes = recurringExpenseService.getExpenseTemplateChanges(generatedExpense!)
+        XCTAssertEqual(changes.count, 4)
+        
+        // Verify change types
+        let changeTypes = changes.map { $0.changeTypeKey }
+        XCTAssertTrue(changeTypes.contains("amount"))
+        XCTAssertTrue(changeTypes.contains("merchant"))
+        XCTAssertTrue(changeTypes.contains("notes"))
+        XCTAssertTrue(changeTypes.contains("currency"))
+    }
+    
+    func testUpdateTemplateFromExpense() throws {
+        // Create recurring expense template
+        let recurringExpense = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "50.00"),
+            currencyCode: "USD",
+            merchant: "Original Merchant",
+            notes: "Original notes",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date()
+        )
+        
+        try testContext.save()
+        
+        // Create changes to apply
+        let changes: [TemplateChangeType] = [
+            .amount(from: NSDecimalNumber(string: "50.00"), to: NSDecimalNumber(string: "75.00")),
+            .merchant(from: "Original Merchant", to: "Updated Merchant"),
+            .notes(from: "Original notes", to: "Updated notes"),
+            .currency(from: "USD", to: "EUR")
+        ]
+        
+        // Apply changes to template
+        try recurringExpenseService.updateTemplateFromExpense(recurringExpense, with: changes)
+        
+        // Verify changes were applied
+        XCTAssertEqual(recurringExpense.amount, NSDecimalNumber(string: "75.00"))
+        XCTAssertEqual(recurringExpense.merchant, "Updated Merchant")
+        XCTAssertEqual(recurringExpense.notes, "Updated notes")
+        XCTAssertEqual(recurringExpense.currencyCode, "EUR")
+    }
+    
+    func testSynchronizeTemplateFromExpense() throws {
+        // Create recurring expense template with a due date in the past
+        let pastDate = Date().addingTimeInterval(-7 * 24 * 60 * 60) // 7 days ago
+        let recurringExpense = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "200.00"),
+            currencyCode: "USD",
+            merchant: "Sync Test Merchant",
+            notes: "Sync test notes",
+            category: testCategory,
+            patternType: .weekly,
+            startDate: pastDate
+        )
+        
+        // Manually set the next due date to be in the past to make it due for generation
+        recurringExpense.pattern?.nextDueDate = pastDate
+        
+        try testContext.save()
+        
+        // Generate expense from template
+        let generatedExpense = recurringExpenseService.generateExpense(from: recurringExpense)
+        XCTAssertNotNil(generatedExpense, "Should be able to generate expense from due template")
+        
+        try testContext.save()
+        
+        // Modify the generated expense
+        generatedExpense!.amount = NSDecimalNumber(string: "250.00")
+        generatedExpense!.merchant = "Synchronized Merchant"
+        generatedExpense!.notes = "Synchronized notes"
+        
+        // Synchronize template from expense
+        try recurringExpenseService.synchronizeTemplateFromExpense(generatedExpense!)
+        
+        // Verify template was updated
+        XCTAssertEqual(recurringExpense.amount, NSDecimalNumber(string: "250.00"))
+        XCTAssertEqual(recurringExpense.merchant, "Synchronized Merchant")
+        XCTAssertEqual(recurringExpense.notes, "Synchronized notes")
+    }
+    
+    func testValidateTemplateNotOrphaned() throws {
+        // Create recurring expense template
+        let activeTemplate = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "100.00"),
+            currencyCode: "USD",
+            merchant: "Active Template",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date()
+        )
+        
+        // Create old inactive template
+        let oldInactiveTemplate = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "50.00"),
+            currencyCode: "USD",
+            merchant: "Old Inactive Template",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date().addingTimeInterval(-200 * 24 * 60 * 60) // ~7 months ago
+        )
+        oldInactiveTemplate.isActive = false
+        
+        try testContext.save()
+        
+        // Generate expense from active template
+        let _ = recurringExpenseService.generateExpense(from: activeTemplate)
+        
+        try testContext.save()
+        
+        // Active template with generated expenses should not be orphaned
+        XCTAssertTrue(recurringExpenseService.validateTemplateNotOrphaned(activeTemplate))
+        
+        // Old inactive template without generated expenses should be orphaned
+        XCTAssertFalse(recurringExpenseService.validateTemplateNotOrphaned(oldInactiveTemplate))
+    }
+    
+    func testFindOrphanedTemplates() throws {
+        // Create active template with generated expense
+        let activeTemplate = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "100.00"),
+            currencyCode: "USD",
+            merchant: "Active Template",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date()
+        )
+        
+        // Create orphaned template
+        let orphanedTemplate = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "50.00"),
+            currencyCode: "USD",
+            merchant: "Orphaned Template",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date().addingTimeInterval(-200 * 24 * 60 * 60) // ~7 months ago
+        )
+        orphanedTemplate.isActive = false
+        
+        try testContext.save()
+        
+        // Generate expense from active template
+        let _ = recurringExpenseService.generateExpense(from: activeTemplate)
+        
+        try testContext.save()
+        
+        // Find orphaned templates
+        let orphanedTemplates = recurringExpenseService.findOrphanedTemplates()
+        
+        XCTAssertEqual(orphanedTemplates.count, 1)
+        XCTAssertEqual(orphanedTemplates.first?.merchant, "Orphaned Template")
+    }
+    
+    func testResolveTemplateUpdateConflicts() throws {
+        // Create recurring expense template
+        let recurringExpense = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "100.00"),
+            currencyCode: "USD",
+            merchant: "Conflict Test Merchant",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date()
+        )
+        
+        try testContext.save()
+        
+        // Create conflicting changes
+        let conflictingChanges: [[TemplateChangeType]] = [
+            [
+                .amount(from: NSDecimalNumber(string: "100.00"), to: NSDecimalNumber(string: "150.00")),
+                .merchant(from: "Conflict Test Merchant", to: "Updated Merchant A")
+            ],
+            [
+                .amount(from: NSDecimalNumber(string: "100.00"), to: NSDecimalNumber(string: "150.00")), // Same amount
+                .merchant(from: "Conflict Test Merchant", to: "Updated Merchant B")
+            ],
+            [
+                .amount(from: NSDecimalNumber(string: "100.00"), to: NSDecimalNumber(string: "200.00")),
+                .merchant(from: "Conflict Test Merchant", to: "Updated Merchant A") // Same merchant as first
+            ]
+        ]
+        
+        // Resolve conflicts
+        let resolvedChanges = try recurringExpenseService.resolveTemplateUpdateConflicts(recurringExpense, conflictingChanges: conflictingChanges)
+        
+        XCTAssertEqual(resolvedChanges.count, 2) // Should have amount and merchant changes
+        
+        // Verify resolved changes
+        let changeTypes = resolvedChanges.map { $0.changeTypeKey }
+        XCTAssertTrue(changeTypes.contains("amount"))
+        XCTAssertTrue(changeTypes.contains("merchant"))
+        
+        // Amount should be the most common (150.00 appears twice)
+        let amountChange = resolvedChanges.first { $0.changeTypeKey == "amount" }
+        if case .amount(_, let resolvedAmount) = amountChange {
+            XCTAssertEqual(resolvedAmount, NSDecimalNumber(string: "150.00"))
+        } else {
+            XCTFail("Expected amount change")
+        }
+        
+        // Merchant should be the most common ("Updated Merchant A" appears twice)
+        let merchantChange = resolvedChanges.first { $0.changeTypeKey == "merchant" }
+        if case .merchant(_, let resolvedMerchant) = merchantChange {
+            XCTAssertEqual(resolvedMerchant, "Updated Merchant A")
+        } else {
+            XCTFail("Expected merchant change")
+        }
+    }
+    
+    func testTemplateUpdateWithInvalidTemplate() throws {
+        // Create and then delete a recurring expense
+        let recurringExpense = recurringExpenseService.createRecurringExpense(
+            amount: NSDecimalNumber(string: "100.00"),
+            currencyCode: "USD",
+            merchant: "Test Merchant",
+            category: testCategory,
+            patternType: .monthly,
+            startDate: Date()
+        )
+        
+        try testContext.save()
+        
+        // Delete the template
+        testContext.delete(recurringExpense)
+        try testContext.save()
+        
+        // Try to update the deleted template
+        let changes: [TemplateChangeType] = [
+            .amount(from: NSDecimalNumber(string: "100.00"), to: NSDecimalNumber(string: "150.00"))
+        ]
+        
+        XCTAssertThrowsError(try recurringExpenseService.updateTemplateFromExpense(recurringExpense, with: changes)) { error in
+            XCTAssertTrue(error is RecurringExpenseError)
+            if case RecurringExpenseError.templateNotFound = error {
+                // Expected error
+            } else {
+                XCTFail("Expected templateNotFound error")
+            }
+        }
+    }
+    
+    func testSynchronizeTemplateFromExpenseWithoutTemplate() throws {
+        // Create a regular expense without a recurring template
+        let expense = Expense(context: testContext)
+        expense.id = UUID()
+        expense.amount = NSDecimalNumber(string: "100.00")
+        expense.currencyCode = "USD"
+        expense.merchant = "Regular Merchant"
+        expense.date = Date()
+        expense.category = testCategory
+        expense.isRecurring = false
+        
+        try testContext.save()
+        
+        // Try to synchronize template from expense without template
+        XCTAssertThrowsError(try recurringExpenseService.synchronizeTemplateFromExpense(expense)) { error in
+            XCTAssertTrue(error is RecurringExpenseError)
+            if case RecurringExpenseError.templateNotFound = error {
+                // Expected error
+            } else {
+                XCTFail("Expected templateNotFound error")
+            }
+        }
+    }
 }
