@@ -169,6 +169,18 @@
     - **Quality Gates**: No recurring expense editing in ExpenseEditView, template info is read-only, clear path to template management
     - _Requirements: 4.7_
 
+  - [x] 4.10.3.2 Add delete functionality for recurring expense templates
+    - Add swipe-to-delete functionality in SimpleRecurringListView for recurring expense templates
+    - Implement delete confirmation dialog with options to keep or delete generated expenses
+    - Add delete button in recurring expense detail/edit view
+    - Update RecurringExpenseService.deleteRecurringExpense method to handle both template and generated expense deletion
+    - Add bulk delete functionality for multiple templates (optional)
+    - Implement proper cleanup of relationships when deleting templates
+    - Add undo functionality for accidental deletions (optional)
+    - Add tests to verify delete functionality works correctly and doesn't leave orphaned data
+    - **Quality Gates**: Users can delete recurring templates, proper cleanup of relationships, confirmation dialogs prevent accidental deletion
+    - _Requirements: 4.7_
+
   - [ ] 4.10.4 Implement template synchronization service methods
     - Update RecurringExpenseService to provide template synchronization methods
     - Add methods for updating template from expense changes (category, amount, merchant, notes)
