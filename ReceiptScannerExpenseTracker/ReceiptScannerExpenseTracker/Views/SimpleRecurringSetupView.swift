@@ -24,6 +24,8 @@ struct SimpleRecurringSetupView: View {
     @State private var autoCreateNext: Bool = false
     @State private var recurringExpenseService: RecurringExpenseService?
     @State private var existingRecurringExpense: RecurringExpense?
+    @State private var showingDeleteTemplateConfirmation = false
+    @State private var deleteGeneratedExpenses = false
     
     var body: some View {
         NavigationView {
@@ -101,6 +103,10 @@ struct SimpleRecurringSetupView: View {
                         Button("Remove Recurring Setting", role: .destructive) {
                             removeRecurringInfo()
                         }
+                        
+                        Button("Delete Recurring Template", role: .destructive) {
+                            showingDeleteTemplateConfirmation = true
+                        }
                     }
                 }
             }
@@ -124,6 +130,28 @@ struct SimpleRecurringSetupView: View {
         .onAppear {
             setupService()
             loadExistingRecurringInfo()
+        }
+        .alert("Delete Recurring Template", isPresented: $showingDeleteTemplateConfirmation) {
+            Button("Keep Generated Expenses", role: .cancel) {
+                deleteRecurringTemplate(deleteGenerated: false)
+            }
+            Button("Delete All Related Expenses", role: .destructive) {
+                deleteRecurringTemplate(deleteGenerated: true)
+            }
+            Button("Cancel") {
+                // Do nothing
+            }
+        } message: {
+            if let recurringExpense = existingRecurringExpense, !recurringExpense.isDeleted, recurringExpense.managedObjectContext != nil {
+                let generatedCount = recurringExpense.safeGeneratedExpenses.count
+                if generatedCount > 0 {
+                    Text("This will permanently delete the recurring template for \(recurringExpense.merchant). You have \(generatedCount) generated expense(s) from this template. What would you like to do with them?")
+                } else {
+                    Text("This will permanently delete the recurring template for \(recurringExpense.merchant). No generated expenses will be affected.")
+                }
+            } else {
+                Text("This recurring template is no longer available.")
+            }
         }
     }
     
@@ -341,6 +369,64 @@ struct SimpleRecurringSetupView: View {
             dismiss()
         } catch {
             print("Error removing recurring info: \(error)")
+        }
+    }
+    
+    private func deleteRecurringTemplate(deleteGenerated: Bool) {
+        guard let service = recurringExpenseService,
+              let existingRecurring = existingRecurringExpense else { return }
+        
+        // Ensure the recurring expense is still valid
+        guard !existingRecurring.isDeleted, existingRecurring.managedObjectContext != nil else {
+            print("Warning: Attempting to delete an already deleted recurring template")
+            dismiss()
+            return
+        }
+        
+        do {
+            // Remove the relationship from the current expense first
+            if !expense.isDeleted && expense.managedObjectContext != nil {
+                expense.recurringTemplate = nil
+                
+                // Clear legacy recurring info
+                expense.isRecurring = false
+                if let notes = expense.notes {
+                    var updatedNotes = notes
+                    
+                    // Remove the recurring pattern
+                    updatedNotes = updatedNotes.replacingOccurrences(
+                        of: "\\n?\\[Recurring:.*?\\]", 
+                        with: "", 
+                        options: .regularExpression
+                    )
+                    
+                    // Remove reminder settings
+                    updatedNotes = updatedNotes.replacingOccurrences(
+                        of: "\\n?\\[Reminder: \\d+ days?\\]", 
+                        with: "", 
+                        options: .regularExpression
+                    )
+                    
+                    // Remove auto-create settings
+                    updatedNotes = updatedNotes.replacingOccurrences(
+                        of: "\\n?\\[AutoCreate: (true|false)\\]", 
+                        with: "", 
+                        options: .regularExpression
+                    )
+                    
+                    updatedNotes = updatedNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+                    expense.notes = updatedNotes.isEmpty ? nil : updatedNotes
+                }
+            }
+            
+            // Delete the recurring template and optionally its generated expenses
+            service.deleteRecurringExpense(existingRecurring, deleteGeneratedExpenses: deleteGenerated)
+            
+            try viewContext.save()
+            dismiss()
+        } catch {
+            print("Error deleting recurring template: \(error)")
+            dismiss()
         }
     }
 }
