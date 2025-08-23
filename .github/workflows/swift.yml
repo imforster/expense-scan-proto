@@ -19,7 +19,7 @@ jobs:
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest' \
             build
         working-directory: ReceiptScannerExpenseTracker
 
@@ -29,5 +29,6 @@ jobs:
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15'
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+
         working-directory: ReceiptScannerExpenseTracker
