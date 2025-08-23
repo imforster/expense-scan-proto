@@ -27,7 +27,7 @@ jobs:
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' \
             build
-        working-directory: ReceiptScannerExpenseTracker/ReceiptScannerExpenseTracker
+        working-directory: ReceiptScannerExpenseTracker
 
       # Test step using iPhone 16 Pro with iOS 18.6
       - name: Test (iOS Simulator)
@@ -37,4 +37,4 @@ jobs:
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6'
-        working-directory: ReceiptScannerExpenseTracker/ReceiptScannerExpenseTracker
+        working-directory: ReceiptScannerExpenseTracker
