@@ -173,6 +173,27 @@ enum ExpenseError: LocalizedError, Equatable {
     }
 }
 
+/// Errors specific to expense editing operations
+enum ExpenseEditError: LocalizedError {
+    case invalidInput
+    case noSplitsSelected
+    case templateSynchronizationFailed
+    case saveFailed(Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidInput:
+            return "Please check all required fields are filled correctly."
+        case .noSplitsSelected:
+            return "Please select at least one receipt split to create expenses."
+        case .templateSynchronizationFailed:
+            return "Failed to synchronize with recurring template."
+        case .saveFailed(let error):
+            return "Failed to save expense: \(error.localizedDescription)"
+        }
+    }
+}
+
 /// Error severity levels for logging and handling
 enum ErrorSeverity {
     case low    // User input errors, validation issues
