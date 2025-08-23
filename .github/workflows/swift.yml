@@ -11,30 +11,29 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # Checkout the repository
       - uses: actions/checkout@v4
 
-      # Debug: list available simulators (optional)
+      # Debug simulators (optional)
       - name: List available simulators
         run: xcrun simctl list devices
 
-      # Build the project using iPhone 16 Pro with iOS 18.6
+      # Build
       - name: Build (iOS Simulator)
         run: |
           xcodebuild \
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.0' \
             build
         working-directory: ReceiptScannerExpenseTracker
 
-      # Run tests on the same simulator
+      # Test
       - name: Test (iOS Simulator)
         run: |
           xcodebuild test \
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6'
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.0'
         working-directory: ReceiptScannerExpenseTracker
