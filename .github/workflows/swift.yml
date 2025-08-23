@@ -13,10 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
-        run: xcodebuild -project ReceiptScannerExpenseTracker.xcodeproj -scheme ReceiptScannerExpenseTracker build
+      - name: Build (iOS Simulator)
+        run: xcodebuild -project ReceiptScannerExpenseTracker.xcodeproj \
+                        -scheme ReceiptScannerExpenseTracker \
+                        -sdk iphonesimulator \
+                        -destination 'platform=iOS Simulator,name=iPhone 15' \
+                        build
         working-directory: ReceiptScannerExpenseTracker
 
-      - name: Test
-        run: xcodebuild test -project ReceiptScannerExpenseTracker.xcodeproj -scheme ReceiptScannerExpenseTracker -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15'
+      - name: Test (iOS Simulator)
+        run: xcodebuild test -project ReceiptScannerExpenseTracker.xcodeproj \
+                             -scheme ReceiptScannerExpenseTracker \
+                             -sdk iphonesimulator \
+                             -destination 'platform=iOS Simulator,name=iPhone 15'
         working-directory: ReceiptScannerExpenseTracker
