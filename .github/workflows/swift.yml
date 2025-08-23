@@ -18,23 +18,23 @@ jobs:
       - name: List available simulators
         run: xcrun simctl list devices
 
-      # Build step using iOS Simulator
+      # Build step using iPhone 16 Pro with iOS 18.6
       - name: Build (iOS Simulator)
         run: |
           xcodebuild \
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=17.0' \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' \
             build
         working-directory: ReceiptScannerExpenseTracker/ReceiptScannerExpenseTracker
 
-      # Test step using iOS Simulator
+      # Test step using iPhone 16 Pro with iOS 18.6
       - name: Test (iOS Simulator)
         run: |
           xcodebuild test \
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=17.0'
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6'
         working-directory: ReceiptScannerExpenseTracker/ReceiptScannerExpenseTracker
