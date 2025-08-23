@@ -279,8 +279,8 @@ class ExpenseEditViewModel: ObservableObject {
         
         // Check amount changes
         if amount != originalAmount {
-            let originalDecimal = NSDecimalNumber(string: originalAmount) ?? NSDecimalNumber.zero
-            let newDecimal = NSDecimalNumber(string: amount) ?? NSDecimalNumber.zero
+            let originalDecimal = NSDecimalNumber(string: originalAmount.isEmpty ? "0" : originalAmount)
+            let newDecimal = NSDecimalNumber(string: amount.isEmpty ? "0" : amount)
             changes.append(.amount(from: originalDecimal, to: newDecimal))
         }
         
@@ -728,12 +728,13 @@ class ExpenseEditViewModel: ObservableObject {
     private func updateExpenseWithTemplateHandling(_ expense: Expense) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             context.perform {
+                // Create template snapshot for rollback if needed
+                var templateSnapshot: [String: Any]?
+                if let template = expense.recurringTemplate {
+                    templateSnapshot = self.recurringExpenseService.createTemplateSnapshot(template)
+                }
+                
                 do {
-                    // Create template snapshot for rollback if needed
-                    var templateSnapshot: [String: Any]?
-                    if let template = expense.recurringTemplate {
-                        templateSnapshot = self.recurringExpenseService.createTemplateSnapshot(template)
-                    }
                     
                     // Update the expense first
                     self.populateExpense(expense)

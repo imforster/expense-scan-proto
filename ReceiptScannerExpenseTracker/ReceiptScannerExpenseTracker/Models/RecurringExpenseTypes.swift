@@ -17,7 +17,7 @@ struct RecurringTemplateInfo {
 enum TemplateChangeType {
     case amount(from: NSDecimalNumber, to: NSDecimalNumber)
     case merchant(from: String, to: String)
-    case category(from: Category?, to: Category?)
+    case category(from: ReceiptScannerExpenseTracker.Category?, to: ReceiptScannerExpenseTracker.Category?)
     case notes(from: String?, to: String?)
     case paymentMethod(from: String?, to: String?)
     case currency(from: String, to: String)

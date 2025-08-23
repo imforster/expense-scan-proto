@@ -1,79 +1,92 @@
 import Foundation
 
 /// Service for managing user preferences and settings
-class UserSettingsService: ObservableObject {
+class UserSettingsService {
     static let shared = UserSettingsService()
     
-    private init() {
-        // Initialize with current values from UserDefaults, defaulting to CAD for Canadian users
-        _preferredCurrencyCode = Published(initialValue: UserDefaults.standard.string(forKey: Keys.preferredCurrencyCode) ?? "CAD")
-        _templateUpdateBehavior = Published(initialValue: TemplateUpdateBehavior(rawValue: UserDefaults.standard.string(forKey: Keys.templateUpdateBehavior) ?? "") ?? .alwaysAsk)
-    }
+    private let userDefaults = UserDefaults.standard
     
-    // MARK: - Keys
+    // Keys for UserDefaults
     private enum Keys {
-        static let preferredCurrencyCode = "preferredCurrencyCode"
         static let templateUpdateBehavior = "templateUpdateBehavior"
+        static let preferredCurrency = "preferredCurrency"
+        static let biometricAuthEnabled = "biometricAuthEnabled"
+        static let autoBackupEnabled = "autoBackupEnabled"
     }
     
-    // MARK: - Published Properties
-    @Published var preferredCurrencyCode: String {
-        didSet {
-            UserDefaults.standard.set(preferredCurrencyCode, forKey: Keys.preferredCurrencyCode)
-        }
-    }
+    private init() {}
     
-    @Published var templateUpdateBehavior: TemplateUpdateBehavior {
-        didSet {
-            UserDefaults.standard.set(templateUpdateBehavior.rawValue, forKey: Keys.templateUpdateBehavior)
-        }
-    }
+    // MARK: - Template Update Behavior
     
-    // MARK: - Computed Properties
-    var preferredCurrencyInfo: CurrencyInfo? {
-        return CurrencyService.shared.getCurrencyInfo(for: preferredCurrencyCode)
-    }
-    
-    // MARK: - Methods
-    
-    /// Reset all settings to defaults
-    func resetToDefaults() {
-        preferredCurrencyCode = "CAD"
-        templateUpdateBehavior = .alwaysAsk
-    }
-    
-    /// Get the default currency code for new expenses
-    func getDefaultCurrencyCode() -> String {
-        return preferredCurrencyCode
-    }
-    
-    /// Update the preferred currency
-    func setPreferredCurrency(_ currencyCode: String) {
-        preferredCurrencyCode = currencyCode
-    }
-    
-    /// Get the template update behavior preference
+    /// Get the current template update behavior preference
     func getTemplateUpdateBehavior() -> TemplateUpdateBehavior {
-        return templateUpdateBehavior
+        let rawValue = userDefaults.string(forKey: Keys.templateUpdateBehavior) ?? TemplateUpdateBehavior.alwaysAsk.rawValue
+        return TemplateUpdateBehavior(rawValue: rawValue) ?? .alwaysAsk
     }
     
     /// Set the template update behavior preference
     func setTemplateUpdateBehavior(_ behavior: TemplateUpdateBehavior) {
-        templateUpdateBehavior = behavior
+        userDefaults.set(behavior.rawValue, forKey: Keys.templateUpdateBehavior)
     }
     
-    /// Check if user wants to be asked about template updates
+    /// Check if we should ask about template updates
     func shouldAskAboutTemplateUpdates() -> Bool {
-        return templateUpdateBehavior == .alwaysAsk
+        return getTemplateUpdateBehavior() == .alwaysAsk
     }
     
-    /// Check if user wants to automatically update templates
+    /// Check if we should automatically update templates
     func shouldAutoUpdateTemplates() -> Bool {
-        return templateUpdateBehavior == .alwaysUpdateTemplate
+        return getTemplateUpdateBehavior() == .alwaysUpdateTemplate
     }
     
-    /// Check if user wants to only update expenses (never templates)
+    /// Check if we should only update expenses (not templates)
     func shouldOnlyUpdateExpenses() -> Bool {
-        return templateUpdateBehavior == .alwaysUpdateExpenseOnly
+        return getTemplateUpdateBehavior() == .alwaysUpdateExpenseOnly
+    }
+    
+    // MARK: - Currency Settings
+    
+    /// Get the preferred currency code
+    func getPreferredCurrency() -> String {
+        return userDefaults.string(forKey: Keys.preferredCurrency) ?? "USD"
+    }
+    
+    /// Set the preferred currency code
+    func setPreferredCurrency(_ currencyCode: String) {
+        userDefaults.set(currencyCode, forKey: Keys.preferredCurrency)
+    }
+    
+    // MARK: - Security Settings
+    
+    /// Check if biometric authentication is enabled
+    func isBiometricAuthEnabled() -> Bool {
+        return userDefaults.bool(forKey: Keys.biometricAuthEnabled)
+    }
+    
+    /// Set biometric authentication preference
+    func setBiometricAuthEnabled(_ enabled: Bool) {
+        userDefaults.set(enabled, forKey: Keys.biometricAuthEnabled)
+    }
+    
+    // MARK: - Backup Settings
+    
+    /// Check if auto backup is enabled
+    func isAutoBackupEnabled() -> Bool {
+        return userDefaults.bool(forKey: Keys.autoBackupEnabled)
+    }
+    
+    /// Set auto backup preference
+    func setAutoBackupEnabled(_ enabled: Bool) {
+        userDefaults.set(enabled, forKey: Keys.autoBackupEnabled)
+    }
+    
+    // MARK: - Reset Settings
+    
+    /// Reset all settings to defaults
+    func resetToDefaults() {
+        userDefaults.removeObject(forKey: Keys.templateUpdateBehavior)
+        userDefaults.removeObject(forKey: Keys.preferredCurrency)
+        userDefaults.removeObject(forKey: Keys.biometricAuthEnabled)
+        userDefaults.removeObject(forKey: Keys.autoBackupEnabled)
     }
 }
