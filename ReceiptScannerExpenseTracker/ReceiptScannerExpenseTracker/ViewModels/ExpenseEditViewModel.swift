@@ -5,15 +5,6 @@ import Combine
 
 // MARK: - Supporting Types
 
-struct RecurringTemplateInfo {
-    let templateId: UUID
-    let patternDescription: String
-    let nextDueDate: Date?
-    let isActive: Bool
-    let lastGeneratedDate: Date?
-    let totalGeneratedExpenses: Int
-}
-
 // MARK: - Extensions
 
 extension DateFormatter {
@@ -41,6 +32,11 @@ class ExpenseEditViewModel: ObservableObject {
     @Published var hasRecurringTemplate: Bool = false
     @Published var recurringTemplateInfo: RecurringTemplateInfo?
     
+    // Template update choice UI
+    @Published var showingTemplateUpdateChoice: Bool = false
+    @Published var pendingTemplateChanges: [TemplateChangeType] = []
+    @Published var templateUpdateChoice: TemplateUpdateChoice?
+    
     // Receipt splitting
     @Published var isReceiptSplitMode: Bool = false
     @Published var receiptSplits: [ReceiptSplit] = []
@@ -62,8 +58,19 @@ class ExpenseEditViewModel: ObservableObject {
     private let context: NSManagedObjectContext
     private let categoryService: CategoryServiceProtocol
     private let currencyService = CurrencyService.shared
+    private let userSettingsService = UserSettingsService.shared
+    private let recurringExpenseService: RecurringExpenseService
     var expense: Expense?
     private var cancellables = Set<AnyCancellable>()
+    
+    // Store original values for change detection
+    private var originalAmount: String = ""
+    private var originalMerchant: String = ""
+    private var originalCategory: Category?
+    private var originalNotes: String = ""
+    private var originalPaymentMethod: String = ""
+    private var originalCurrencyCode: String = ""
+    private var originalTags: [Tag] = []
     
     // Payment method options
     let paymentMethods = ["Cash", "Credit Card", "MasterCard", "Visa", "AMEX","Debit Card", "Check", "Bank Transfer", "Digital Wallet", "Other"]
@@ -72,6 +79,7 @@ class ExpenseEditViewModel: ObservableObject {
         self.context = context
         self.expense = expense
         self.categoryService = categoryService
+        self.recurringExpenseService = RecurringExpenseService(context: context)
         
         setupObservers()
         loadInitialData()
@@ -79,6 +87,7 @@ class ExpenseEditViewModel: ObservableObject {
         
         if let expense = expense {
             populateFromExpense(expense)
+            storeOriginalValues()
         }
     }
     
@@ -241,12 +250,151 @@ class ExpenseEditViewModel: ObservableObject {
     func validateTemplateRelationship() -> Bool {
         guard hasRecurringTemplate,
               let templateInfo = recurringTemplateInfo,
-              let expense = expense else {
+              expense != nil else {
             return true // No template relationship to validate
         }
         
         // Basic validation - ensure the expense is still linked to an active template
         return templateInfo.isActive
+    }
+    
+    // MARK: - Template Update Detection
+    
+    /// Store original values for change detection
+    private func storeOriginalValues() {
+        originalAmount = amount
+        originalMerchant = merchant
+        originalCategory = selectedCategory
+        originalNotes = notes
+        originalPaymentMethod = paymentMethod
+        originalCurrencyCode = currencyCode
+        originalTags = tags
+    }
+    
+    /// Detect significant changes that should trigger template update choice
+    func detectSignificantChanges() -> [TemplateChangeType] {
+        guard hasRecurringTemplate else { return [] }
+        
+        var changes: [TemplateChangeType] = []
+        
+        // Check amount changes
+        if amount != originalAmount {
+            let originalDecimal = NSDecimalNumber(string: originalAmount.isEmpty ? "0" : originalAmount)
+            let newDecimal = NSDecimalNumber(string: amount.isEmpty ? "0" : amount)
+            changes.append(.amount(from: originalDecimal, to: newDecimal))
+        }
+        
+        // Check merchant changes
+        if merchant != originalMerchant {
+            changes.append(.merchant(from: originalMerchant, to: merchant))
+        }
+        
+        // Check category changes
+        if selectedCategory?.id != originalCategory?.id {
+            changes.append(.category(from: originalCategory, to: selectedCategory))
+        }
+        
+        // Check notes changes (only if significant)
+        let cleanedOriginalNotes = cleanNotesForComparison(originalNotes)
+        let cleanedCurrentNotes = cleanNotesForComparison(notes)
+        if cleanedOriginalNotes != cleanedCurrentNotes {
+            changes.append(.notes(from: originalNotes, to: notes))
+        }
+        
+        // Check payment method changes
+        if paymentMethod != originalPaymentMethod {
+            changes.append(.paymentMethod(from: originalPaymentMethod, to: paymentMethod))
+        }
+        
+        // Check currency changes
+        if currencyCode != originalCurrencyCode {
+            changes.append(.currency(from: originalCurrencyCode, to: currencyCode))
+        }
+        
+        // Check tag changes
+        let originalTagIds = Set(originalTags.map { $0.id })
+        let currentTagIds = Set(tags.map { $0.id })
+        if originalTagIds != currentTagIds {
+            changes.append(.tags(from: originalTags, to: tags))
+        }
+        
+        return changes
+    }
+    
+    /// Clean notes for comparison (remove context tags and whitespace)
+    private func cleanNotesForComparison(_ notes: String) -> String {
+        var cleaned = notes
+        
+        // Remove context tags
+        let contextPattern = "\\[Context: ([^\\]]+)\\]"
+        if let regex = try? NSRegularExpression(pattern: contextPattern) {
+            cleaned = regex.stringByReplacingMatches(
+                in: cleaned,
+                range: NSRange(location: 0, length: cleaned.count),
+                withTemplate: ""
+            )
+        }
+        
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    /// Check if changes are significant enough to warrant template update choice
+    func hasSignificantChanges() -> Bool {
+        let changes = detectSignificantChanges()
+        return !changes.isEmpty && hasRecurringTemplate
+    }
+    
+    /// Handle template update choice from user
+    func handleTemplateUpdateChoice(_ choice: TemplateUpdateChoice) {
+        templateUpdateChoice = choice
+        
+        switch choice {
+        case .updateTemplate:
+            // Will be handled in saveExpense
+            break
+        case .updateExpenseOnly:
+            // Will be handled in saveExpense
+            break
+        case .cancel:
+            // Reset to original values
+            resetToOriginalValues()
+        }
+        
+        showingTemplateUpdateChoice = false
+    }
+    
+    /// Reset fields to original values
+    private func resetToOriginalValues() {
+        amount = originalAmount
+        merchant = originalMerchant
+        selectedCategory = originalCategory
+        notes = originalNotes
+        paymentMethod = originalPaymentMethod
+        currencyCode = originalCurrencyCode
+        tags = originalTags
+    }
+    
+    /// Update user preference for template updates
+    func updateTemplateUpdatePreference(_ behavior: TemplateUpdateBehavior) {
+        userSettingsService.setTemplateUpdateBehavior(behavior)
+    }
+    
+    /// Check if we should show template update choice dialog
+    func shouldShowTemplateUpdateChoice() -> Bool {
+        guard hasSignificantChanges() else { return false }
+        
+        let behavior = userSettingsService.getTemplateUpdateBehavior()
+        
+        switch behavior {
+        case .alwaysAsk:
+            return true
+        case .alwaysUpdateTemplate:
+            templateUpdateChoice = .updateTemplate
+            return false
+        case .alwaysUpdateExpenseOnly:
+            templateUpdateChoice = .updateExpenseOnly
+            return false
+        }
     }
     
 
@@ -275,7 +423,7 @@ class ExpenseEditViewModel: ObservableObject {
     }
     
     func validateReceiptSplits() {
-        let totalSplitAmount = receiptSplits.reduce(Decimal.zero) { total, split in
+        _ = receiptSplits.reduce(Decimal.zero) { total, split in
             total + (Decimal(string: split.amount) ?? 0)
         }
         
@@ -497,12 +645,42 @@ class ExpenseEditViewModel: ObservableObject {
             throw ExpenseEditError.invalidInput
         }
         
+        // Check if we need to show template update choice
+        if shouldShowTemplateUpdateChoice() {
+            pendingTemplateChanges = detectSignificantChanges()
+            showingTemplateUpdateChoice = true
+            return // Don't save yet, wait for user choice
+        }
+        
         isLoading = true
         errorMessage = nil
         
         do {
             if let existingExpense = expense {
                 try await updateExpense(existingExpense)
+            } else {
+                try await createNewExpense()
+            }
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+    
+    /// Save expense after template update choice has been made
+    func saveExpenseWithChoice() async throws {
+        guard validateInput() else {
+            throw ExpenseEditError.invalidInput
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            if let existingExpense = expense {
+                try await updateExpenseWithTemplateHandling(existingExpense)
             } else {
                 try await createNewExpense()
             }
@@ -540,6 +718,73 @@ class ExpenseEditViewModel: ObservableObject {
                     try self.context.save()
                     continuation.resume()
                 } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
+    /// Update expense with template handling based on user choice
+    private func updateExpenseWithTemplateHandling(_ expense: Expense) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            context.perform {
+                // Create template snapshot for rollback if needed
+                var templateSnapshot: [String: Any]?
+                if let template = expense.recurringTemplate {
+                    templateSnapshot = self.recurringExpenseService.createTemplateSnapshot(template)
+                }
+                
+                do {
+                    
+                    // Update the expense first
+                    self.populateExpense(expense)
+                    
+                    // Handle template updates based on user choice
+                    if let choice = self.templateUpdateChoice,
+                       let template = expense.recurringTemplate,
+                       !self.pendingTemplateChanges.isEmpty {
+                        
+                        switch choice {
+                        case .updateTemplate:
+                            // Validate changes before applying
+                            if self.recurringExpenseService.validateTemplateSynchronization(template, changes: self.pendingTemplateChanges) {
+                                try self.recurringExpenseService.updateTemplateFromExpense(template, with: self.pendingTemplateChanges)
+                            } else {
+                                // Rollback if validation fails
+                                if let snapshot = templateSnapshot {
+                                    try self.recurringExpenseService.rollbackTemplateSynchronization(template, originalValues: snapshot)
+                                }
+                                throw ExpenseEditError.templateSynchronizationFailed
+                            }
+                            
+                        case .updateExpenseOnly:
+                            // Keep the link but don't update the template
+                            // This allows the user to diverge this specific expense from the template
+                            break
+                            
+                        case .cancel:
+                            // This should not happen as we reset values in handleTemplateUpdateChoice
+                            break
+                        }
+                    }
+                    
+                    try self.context.save()
+                    
+                    // Clear the choice and changes after successful save
+                    DispatchQueue.main.async {
+                        self.templateUpdateChoice = nil
+                        self.pendingTemplateChanges = []
+                        // Update original values for future change detection
+                        self.storeOriginalValues()
+                    }
+                    
+                    continuation.resume()
+                } catch {
+                    // Rollback template changes if save fails
+                    if let template = expense.recurringTemplate,
+                       let snapshot = templateSnapshot {
+                        try? self.recurringExpenseService.rollbackTemplateSynchronization(template, originalValues: snapshot)
+                    }
                     continuation.resume(throwing: error)
                 }
             }
@@ -790,6 +1035,7 @@ enum ExpenseEditError: LocalizedError {
     case invalidInput
     case noSplitsSelected
     case splitAmountMismatch
+    case templateSynchronizationFailed
     
     var errorDescription: String? {
         switch self {
@@ -799,6 +1045,8 @@ enum ExpenseEditError: LocalizedError {
             return "Please select at least one split to create expenses."
         case .splitAmountMismatch:
             return "Split amounts don't match the original receipt total."
+        case .templateSynchronizationFailed:
+            return "Failed to synchronize changes with recurring template. Changes have been reverted."
         }
     }
 }

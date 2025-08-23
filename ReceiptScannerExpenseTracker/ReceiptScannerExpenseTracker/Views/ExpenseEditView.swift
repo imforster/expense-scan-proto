@@ -94,6 +94,25 @@ struct ExpenseEditView: View {
             .sheet(isPresented: $viewModel.showingCurrencyPicker) {
                 CurrencySelectionView(selectedCurrencyCode: $viewModel.currencyCode)
             }
+            .sheet(isPresented: $viewModel.showingTemplateUpdateChoice) {
+                if let templateInfo = viewModel.recurringTemplateInfo {
+                    TemplateUpdateChoiceView(
+                        templateInfo: templateInfo,
+                        changes: viewModel.pendingTemplateChanges,
+                        onChoice: { choice in
+                            viewModel.handleTemplateUpdateChoice(choice)
+                            if choice != .cancel {
+                                Task {
+                                    await saveExpenseWithChoice()
+                                }
+                            }
+                        },
+                        onPreferenceChange: { behavior in
+                            viewModel.updateTemplateUpdatePreference(behavior)
+                        }
+                    )
+                }
+            }
         }
     }
     
@@ -639,6 +658,24 @@ struct ExpenseEditView: View {
     private func saveExpense() async {
         do {
             try await viewModel.saveExpense()
+            
+            // Only dismiss if we're not showing template choice dialog
+            if !viewModel.showingTemplateUpdateChoice {
+                // Post notification that expense data has changed
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .expenseDataChanged, object: nil)
+                }
+                
+                dismiss()
+            }
+        } catch {
+            // Error is handled by the view model
+        }
+    }
+    
+    private func saveExpenseWithChoice() async {
+        do {
+            try await viewModel.saveExpenseWithChoice()
             
             // Post notification that expense data has changed
             DispatchQueue.main.async {

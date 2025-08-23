@@ -191,7 +191,7 @@
     - **Quality Gates**: Service methods handle template synchronization reliably, no data corruption
     - _Requirements: 4.7_
 
-  - [ ] 4.10.5 Add user choice UI for template updates when editing expenses
+  - [x] 4.10.5 Add user choice UI for template updates when editing expenses
     - Add option to "Update Template" or "Update Only This Expense" when editing template-linked expenses
     - Implement modal/alert dialog for user choice when significant changes are detected (category, amount, merchant)
     - Handle edge cases where user wants to break the link between expense and template
