@@ -1,30 +1,6 @@
 import Foundation
 import CoreData
 
-/// Enum representing different types of template changes
-enum TemplateChangeType {
-    case amount(from: NSDecimalNumber, to: NSDecimalNumber)
-    case merchant(from: String, to: String)
-    case category(from: Category?, to: Category?)
-    case notes(from: String?, to: String?)
-    case paymentMethod(from: String?, to: String?)
-    case currency(from: String, to: String)
-    case tags(from: [Tag], to: [Tag])
-    
-    /// Get a string key for grouping changes by type
-    var changeTypeKey: String {
-        switch self {
-        case .amount: return "amount"
-        case .merchant: return "merchant"
-        case .category: return "category"
-        case .notes: return "notes"
-        case .paymentMethod: return "paymentMethod"
-        case .currency: return "currency"
-        case .tags: return "tags"
-        }
-    }
-}
-
 /// Errors that can occur during recurring expense operations
 enum RecurringExpenseError: Error, LocalizedError {
     case templateNotFound
@@ -417,6 +393,144 @@ class RecurringExpenseService {
         guard !changes.isEmpty else { return }
         
         try updateTemplateFromExpense(template, with: changes)
+    }
+    
+    /// Batch synchronize template from multiple expense changes with conflict resolution
+    func batchSynchronizeTemplateFromExpenses(_ expenses: [Expense]) throws {
+        // Group expenses by their recurring template
+        var expensesByTemplate: [RecurringExpense: [Expense]] = [:]
+        
+        for expense in expenses {
+            guard let template = expense.recurringTemplate else { continue }
+            
+            if expensesByTemplate[template] == nil {
+                expensesByTemplate[template] = []
+            }
+            expensesByTemplate[template]?.append(expense)
+        }
+        
+        // Process each template
+        for (template, templateExpenses) in expensesByTemplate {
+            try synchronizeTemplateFromMultipleExpenses(template, expenses: templateExpenses)
+        }
+    }
+    
+    /// Synchronize template from multiple expenses with conflict resolution
+    private func synchronizeTemplateFromMultipleExpenses(_ template: RecurringExpense, expenses: [Expense]) throws {
+        guard !expenses.isEmpty else { return }
+        
+        // If only one expense, use simple synchronization
+        if expenses.count == 1 {
+            try synchronizeTemplateFromExpense(expenses[0])
+            return
+        }
+        
+        // Collect all changes from all expenses
+        var allChanges: [[TemplateChangeType]] = []
+        
+        for expense in expenses {
+            let changes = getExpenseTemplateChanges(expense)
+            if !changes.isEmpty {
+                allChanges.append(changes)
+            }
+        }
+        
+        guard !allChanges.isEmpty else { return }
+        
+        // Resolve conflicts and apply changes
+        let resolvedChanges = try resolveTemplateUpdateConflicts(template, conflictingChanges: allChanges)
+        try updateTemplateFromExpense(template, with: resolvedChanges)
+    }
+    
+    /// Rollback template synchronization if it fails
+    func rollbackTemplateSynchronization(_ template: RecurringExpense, originalValues: [String: Any]) throws {
+        guard !template.isDeleted, template.managedObjectContext != nil else {
+            throw RecurringExpenseError.templateNotFound
+        }
+        
+        // Restore original values
+        if let amount = originalValues["amount"] as? NSDecimalNumber {
+            template.amount = amount
+        }
+        
+        if let merchant = originalValues["merchant"] as? String {
+            template.merchant = merchant
+        }
+        
+        if let category = originalValues["category"] as? Category {
+            template.category = category
+        }
+        
+        if let notes = originalValues["notes"] as? String? {
+            template.notes = notes
+        }
+        
+        if let paymentMethod = originalValues["paymentMethod"] as? String? {
+            template.paymentMethod = paymentMethod
+        }
+        
+        if let currencyCode = originalValues["currencyCode"] as? String {
+            template.currencyCode = currencyCode
+        }
+        
+        if let tags = originalValues["tags"] as? [Tag] {
+            // Clear existing tags
+            if let existingTags = template.tags {
+                template.removeFromTags(existingTags)
+            }
+            // Restore original tags
+            for tag in tags {
+                template.addToTags(tag)
+            }
+        }
+    }
+    
+    /// Create a snapshot of template values for rollback purposes
+    func createTemplateSnapshot(_ template: RecurringExpense) -> [String: Any] {
+        var snapshot: [String: Any] = [:]
+        
+        snapshot["amount"] = template.amount
+        snapshot["merchant"] = template.merchant
+        snapshot["category"] = template.category
+        snapshot["notes"] = template.notes
+        snapshot["paymentMethod"] = template.paymentMethod
+        snapshot["currencyCode"] = template.currencyCode
+        snapshot["tags"] = Array(template.tags?.allObjects as? [Tag] ?? [])
+        
+        return snapshot
+    }
+    
+    /// Validate template synchronization integrity
+    func validateTemplateSynchronization(_ template: RecurringExpense, changes: [TemplateChangeType]) -> Bool {
+        // Check that the template is still valid after changes
+        guard !template.isDeleted,
+              template.managedObjectContext != nil,
+              !template.merchant.isEmpty,
+              template.amount.doubleValue > 0 else {
+            return false
+        }
+        
+        // Validate that changes are reasonable
+        for change in changes {
+            switch change {
+            case .amount(_, let newAmount):
+                if newAmount.doubleValue <= 0 {
+                    return false
+                }
+            case .merchant(_, let newMerchant):
+                if newMerchant.isEmpty {
+                    return false
+                }
+            case .currency(_, let newCurrency):
+                if newCurrency.isEmpty {
+                    return false
+                }
+            default:
+                break
+            }
+        }
+        
+        return true
     }
     
     /// Validate that a recurring template is not orphaned
