@@ -11,24 +11,30 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # Checkout the code
       - uses: actions/checkout@v4
 
+      # Debug: list available simulators
+      - name: List available simulators
+        run: xcrun simctl list devices
+
+      # Build step using iOS Simulator
       - name: Build (iOS Simulator)
         run: |
           xcodebuild \
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=17.0' \
             build
-        working-directory: ReceiptScannerExpenseTracker
+        working-directory: ReceiptScannerExpenseTracker/ReceiptScannerExpenseTracker
 
+      # Test step using iOS Simulator
       - name: Test (iOS Simulator)
         run: |
           xcodebuild test \
             -project ReceiptScannerExpenseTracker.xcodeproj \
             -scheme ReceiptScannerExpenseTracker \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
-
-        working-directory: ReceiptScannerExpenseTracker
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=17.0'
+        working-directory: ReceiptScannerExpenseTracker/ReceiptScannerExpenseTracker
